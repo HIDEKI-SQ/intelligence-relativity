@@ -229,10 +229,6 @@ def main():
         print("   Cross-implementation differences exceed specification")
         return 1
 
-
-if __name__ == "__main__":
-    sys.exit(main())
-
 # === Generate SHA-256 manifest ===
     from core.deterministic import generate_manifest
     
@@ -242,3 +238,6 @@ if __name__ == "__main__":
     )
     
     print(f"✅ SHA-256 manifest generated")
+
+if __name__ == "__main__":
+    sys.exit(main())
