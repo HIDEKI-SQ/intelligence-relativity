@@ -23,6 +23,7 @@ from scipy.spatial.distance import pdist
 from scipy.stats import spearmanr
 import pandas as pd
 import json
+import hashlib
 
 
 # === Configuration ===
@@ -74,6 +75,15 @@ def compute_ssc_v3(sem_condensed: np.ndarray, spa_condensed: np.ndarray) -> floa
     rho = 1.0 - (6.0 * np.sum(d**2)) / (n * (n**2 - 1))
     
     return float(rho)
+
+
+def compute_file_hash(file_path: Path) -> str:
+    """Compute SHA-256 hash of a file."""
+    sha256 = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b''):
+            sha256.update(chunk)
+    return sha256.hexdigest()
 
 
 # === Test Execution ===
@@ -213,6 +223,26 @@ def run_test_suite_5():
         json.dump(json_data, f, indent=2)
     print(f"✅ Saved: {json_path}")
     
+    # Generate SHA-256 manifest
+    print()
+    print("="*70)
+    print("Generating SHA-256 Manifest")
+    print("="*70)
+    
+    manifest = {}
+    for file_path in sorted(OUTPUT_DIR.glob("*")):
+        if file_path.is_file() and file_path.suffix in ['.json', '.csv']:
+            rel_path = file_path.relative_to(OUTPUT_DIR)
+            file_hash = compute_file_hash(file_path)
+            manifest[str(rel_path)] = file_hash
+            print(f"  {rel_path}: {file_hash}")
+    
+    manifest_path = OUTPUT_DIR / "sha256_manifest.json"
+    with open(manifest_path, 'w') as f:
+        json.dump(manifest, f, indent=2, sort_keys=True)
+    print(f"✅ Manifest saved: {manifest_path}")
+    print()
+    
     return max_overall < SPEC
 
 
@@ -229,15 +259,6 @@ def main():
         print("   Cross-implementation differences exceed specification")
         return 1
 
-# === Generate SHA-256 manifest ===
-    from core.deterministic import generate_manifest
-    
-    manifest = generate_manifest(
-        output_dir=OUTPUT_DIR,
-        manifest_path=OUTPUT_DIR / "sha256_manifest.json"
-    )
-    
-    print(f"✅ SHA-256 manifest generated")
 
 if __name__ == "__main__":
     sys.exit(main())
