@@ -1,0 +1,35 @@
+name: Test Suite 5 - Full SSC Pipeline
+
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    paths:
+      - 'tests/i1/**'
+      - 'src/core/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        pip install numpy scipy pandas matplotlib
+    
+    - name: Run Test Suite 5
+      run: |
+        python tests/i1/test_ssc_full_pipeline.py
+    
+    - name: Upload results
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-suite-5-results
+        path: outputs/i1/
