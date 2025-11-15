@@ -1,7 +1,7 @@
 name: Run All Experiments
 
 on:
-  workflow_dispatch:  # 手動実行
+  workflow_dispatch:
     inputs:
       experiments:
         description: 'Which experiments to run'
@@ -36,13 +36,7 @@ jobs:
       run: |
         if [ "${{ inputs.experiments }}" = "quick_test" ]; then
           echo "Running quick test (N=10)..."
-          python -c "
-          import sys
-          sys.path.insert(0, 'src')
-          from src.experiments import exp_00_baseline
-          exp_00_baseline.N_TRIALS = 10
-          exp_00_baseline.run_exp00()
-          "
+          python -c "import sys; sys.path.insert(0, 'src'); from src.experiments import exp_00_baseline; exp_00_baseline.N_TRIALS = 10; exp_00_baseline.run_exp00()"
         elif [ "${{ inputs.experiments }}" = "baseline_only" ]; then
           echo "Running EXP-00 baseline (N=1000)..."
           python -m src.experiments.exp_00_baseline
@@ -78,93 +72,9 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Completed Experiments" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        
         for dir in outputs/*/; do
           if [ -d "$dir" ]; then
             exp_name=$(basename "$dir")
-            if [ -f "$dir/${exp_name}_summary.json" ]; then
-              echo "✅ $exp_name" >> $GITHUB_STEP_SUMMARY
-            fi
+            echo "✅ $exp_name" >> $GITHUB_STEP_SUMMARY
           fi
         done
-        
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Output Files" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
-        ls -lh outputs/*/*.{json,csv,png} 2>/dev/null || echo "No output files found"
-        echo '```' >> $GITHUB_STEP_SUMMARY
-```
-
----
-
-## 🚀 実行手順（ブラウザのみ）
-
-### **Step 1: Workflow追加**
-1. GitHubリポジトリで **「Add file」** → **「Create new file」**
-2. ファイル名: `.github/workflows/run_experiments.yml`
-3. 上記の内容をペースト
-4. **「Commit new file」**
-
-### **Step 2: 実験実行**
-1. **「Actions」** タブをクリック
-2. **「Run All Experiments」** を選択
-3. **「Run workflow」** ボタンをクリック
-4. オプション選択:
-   - **`quick_test`**: EXP-00のみ (N=10) - 約10秒
-   - **`baseline_only`**: EXP-00のみ (N=1000) - 約1分
-   - **`all`**: 全15実験 (N=1000) - 約15-30分
-5. **「Run workflow」** 実行
-
-### **Step 3: 結果確認**
-1. 実行中のワークフローをクリック
-2. 進捗状況をリアルタイム確認
-3. 完了後、**「Summary」** タブで結果サマリー表示
-
-### **Step 4: 結果ダウンロード**
-1. ワークフロー完了後、**「Artifacts」** セクションに移動
-2. **`experiment-results-XXXXX`** をクリックしてダウンロード
-3. ZIPファイルを解凍して結果確認
-
----
-
-## 📊 結果の確認方法
-
-**ダウンロードしたZIPファイルの中身**:
-```
-experiment-results-123/
-├── exp00_baseline/
-│   ├── exp00_baseline_summary.json
-│   ├── exp00_baseline_results.csv
-│   ├── exp00_baseline_histogram.png
-│   └── sha256_manifest.json
-├── exp01_spatial_vs_random/
-│   ├── ...
-...
-└── exp13_value_gate_sweep/
-    └── ...
-```
-
----
-
-## ⚡ 推奨実行順序
-
-### **1. まず動作確認（5分以内）**
-```
-Run workflow: quick_test
-→ EXP-00のみ (N=10)
-→ 動作確認
-```
-
-### **2. ベースライン取得（1-2分）**
-```
-Run workflow: baseline_only
-→ EXP-00 (N=1000)
-→ O-1の完全データ取得
-```
-
-### **3. 全実験実行（30分程度）**
-```
-Run workflow: all
-→ 全15実験 (N=1000)
-→ 完全なデータセット取得
