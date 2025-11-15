@@ -232,3 +232,13 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+# === Generate SHA-256 manifest ===
+    from core.deterministic import generate_manifest
+    
+    manifest = generate_manifest(
+        output_dir=OUTPUT_DIR,
+        manifest_path=OUTPUT_DIR / "sha256_manifest.json"
+    )
+    
+    print(f"✅ SHA-256 manifest generated")
