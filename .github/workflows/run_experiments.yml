@@ -35,9 +35,10 @@ jobs:
         pip install transformers torch
     
     - name: Execute experiment suite
-      id: experiments
       continue-on-error: true
       run: |
+        set +e  # エラーでスクリプトを停止しない
+        
         echo "================================================================"
         echo "Intelligence Relativity - Complete Experiment Suite"
         echo "Empirical Validation of the Relativity Theory of Intelligence"
@@ -63,7 +64,8 @@ jobs:
           local module=$2
           local description=$3
           
-          ((TOTAL_COUNT++))
+          # Increment counter (safe way)
+          TOTAL_COUNT=$((TOTAL_COUNT + 1))
           
           echo ""
           echo "────────────────────────────────────────────────────────────────"
@@ -71,25 +73,18 @@ jobs:
           echo "Module: $module"
           echo "────────────────────────────────────────────────────────────────"
           
-          # Execute experiment and capture both stdout and stderr
-          set +e  # Don't exit on error
-          python -m src.experiments.$module
-          local exit_code=$?
-          set -e
-          
-          if [ $exit_code -eq 0 ]; then
+          # Execute experiment
+          if python -m src.experiments.$module 2>&1; then
             echo "✅ SUCCESS: $module completed"
-            ((SUCCESS_COUNT++))
+            SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
           else
-            echo "⚠️  ISSUE: $module exited with code $exit_code"
-            ((FAIL_COUNT++))
+            echo "⚠️  ISSUE: $module failed (continuing...)"
+            FAIL_COUNT=$((FAIL_COUNT + 1))
           fi
-          
-          return 0  # Always return success to continue
         }
         
         # ============================================================
-        # Core Experiments: Natural Orthogonality & Robustness
+        # Core Experiments
         # ============================================================
         
         echo ""
@@ -97,64 +92,23 @@ jobs:
         echo "CORE EXPERIMENTS (EXP-00 to EXP-13)"
         echo "================================================================"
         
-        run_experiment 1 \
-          "exp_00_baseline" \
-          "EXP-00: Baseline (Natural Orthogonality)"
-        
-        run_experiment 2 \
-          "exp_01_spatial_vs_random" \
-          "EXP-01: Spatial Arrangements vs Random"
-        
-        run_experiment 3 \
-          "exp_02_grid_arrangement" \
-          "EXP-02: Grid Arrangement Validation"
-        
-        run_experiment 4 \
-          "exp_03_line_arrangement" \
-          "EXP-03: Line Arrangement Validation"
-        
-        run_experiment 5 \
-          "exp_04_3d_cube_arrangement" \
-          "EXP-04: 3D Cube Arrangement"
-        
-        run_experiment 6 \
-          "exp_05_independence_permutation" \
-          "EXP-05: Independence via Permutation"
-        
-        run_experiment 7 \
-          "exp_06_dimension_robustness" \
-          "EXP-06: Embedding Dimension Robustness"
-        
-        run_experiment 8 \
-          "exp_07_sample_size_robustness" \
-          "EXP-07: Sample Size Robustness (N)"
-        
-        run_experiment 9 \
-          "exp_08_metric_robustness" \
-          "EXP-08: Distance Metric Robustness"
-        
-        run_experiment 10 \
-          "exp_09_topological_disruption" \
-          "EXP-09: Topological Disruption (O-2)"
-        
-        run_experiment 11 \
-          "exp_10_rotation_invariance" \
-          "EXP-10: Rotation Invariance"
-        
-        run_experiment 12 \
-          "exp_11_coordinate_noise" \
-          "EXP-11: Coordinate Noise (O-3)"
-        
-        run_experiment 13 \
-          "exp_12_semantic_noise" \
-          "EXP-12: Semantic Noise (O-3)"
-        
-        run_experiment 14 \
-          "exp_13_value_gate_sweep" \
-          "EXP-13: Value Gate λ-Sweep (O-4)"
+        run_experiment 1 "exp_00_baseline" "EXP-00: Baseline (Natural Orthogonality)"
+        run_experiment 2 "exp_01_spatial_vs_random" "EXP-01: Spatial Arrangements vs Random"
+        run_experiment 3 "exp_02_grid_arrangement" "EXP-02: Grid Arrangement Validation"
+        run_experiment 4 "exp_03_line_arrangement" "EXP-03: Line Arrangement Validation"
+        run_experiment 5 "exp_04_3d_cube_arrangement" "EXP-04: 3D Cube Arrangement"
+        run_experiment 6 "exp_05_independence_permutation" "EXP-05: Independence via Permutation"
+        run_experiment 7 "exp_06_dimension_robustness" "EXP-06: Embedding Dimension Robustness"
+        run_experiment 8 "exp_07_sample_size_robustness" "EXP-07: Sample Size Robustness"
+        run_experiment 9 "exp_08_metric_robustness" "EXP-08: Distance Metric Robustness"
+        run_experiment 10 "exp_09_topological_disruption" "EXP-09: Topological Disruption (O-2)"
+        run_experiment 11 "exp_10_rotation_invariance" "EXP-10: Rotation Invariance"
+        run_experiment 12 "exp_11_coordinate_noise" "EXP-11: Coordinate Noise (O-3)"
+        run_experiment 13 "exp_12_semantic_noise" "EXP-12: Semantic Noise (O-3)"
+        run_experiment 14 "exp_13_value_gate_sweep" "EXP-13: Value Gate λ-Sweep (O-4)"
         
         # ============================================================
-        # Supplementary Experiments: Real-World Validation
+        # Supplementary Experiments
         # ============================================================
         
         echo ""
@@ -162,16 +116,11 @@ jobs:
         echo "SUPPLEMENTARY EXPERIMENTS (SUP-14, SUP-15)"
         echo "================================================================"
         
-        run_experiment 15 \
-          "sup_exp_14_bert" \
-          "SUP-14: BERT Real-World Validation (O-1, O-4)"
-        
-        run_experiment 16 \
-          "sup_exp_15_multilingual" \
-          "SUP-15: Cross-Linguistic Validation (English, Japanese, Chinese)"
+        run_experiment 15 "sup_exp_14_bert" "SUP-14: BERT Real-World Validation"
+        run_experiment 16 "sup_exp_15_multilingual" "SUP-15: Cross-Linguistic Validation"
         
         # ============================================================
-        # Beta Experiment: Historical Reference
+        # Beta Experiment
         # ============================================================
         
         if [ "${{ inputs.include_beta }}" = "true" ]; then
@@ -180,519 +129,218 @@ jobs:
           echo "BETA EXPERIMENT (Historical Reference)"
           echo "================================================================"
           
-          run_experiment 17 \
-            "exp_beta_initial_exploration" \
-            "EXP-BETA: Initial Exploration (Historical)"
+          run_experiment 17 "exp_beta_initial_exploration" "EXP-BETA: Initial Exploration"
         else
           echo ""
-          echo "================================================================"
-          echo "[17/17] EXP-BETA skipped (disabled by input)"
-          echo "================================================================"
+          echo "[17/17] EXP-BETA skipped (disabled)"
         fi
         
         # ============================================================
-        # Execution Summary
+        # Summary
         # ============================================================
         
         echo ""
         echo "================================================================"
         echo "EXECUTION SUMMARY"
         echo "================================================================"
-        echo "Total experiments: $TOTAL_COUNT"
+        echo "Total experiments run: $TOTAL_COUNT"
         echo "✅ Successful: $SUCCESS_COUNT"
-        echo "⚠️  Issues: $FAIL_COUNT"
+        echo "⚠️  Failed: $FAIL_COUNT"
         echo "================================================================"
         
-        # Export for next steps
-        echo "success_count=$SUCCESS_COUNT" >> $GITHUB_OUTPUT
-        echo "fail_count=$FAIL_COUNT" >> $GITHUB_OUTPUT
-        echo "total_count=$TOTAL_COUNT" >> $GITHUB_OUTPUT
-        
-        # Always exit successfully
+        # Always exit 0 to allow subsequent steps
         exit 0
     
-    - name: List outputs directory
+    - name: List outputs
       if: always()
       run: |
-        echo "Checking outputs directory structure..."
+        echo "Checking outputs directory..."
         if [ -d outputs ]; then
           echo "✅ outputs/ exists"
-          find outputs -type f -name "*.json" -o -name "*.png" -o -name "*.csv" | head -20
           echo ""
-          echo "Directory tree:"
-          ls -la outputs/ || true
+          echo "Directory structure:"
+          ls -la outputs/
+          echo ""
+          echo "Summary files found:"
+          find outputs -name "*summary.json" -type f
+          echo ""
+          echo "Total files:"
+          find outputs -type f | wc -l
         else
-          echo "❌ outputs/ directory not found"
+          echo "❌ outputs/ not found"
         fi
     
     - name: Generate master summary
       if: always()
       run: |
-        python - <<'PYTHON_SCRIPT'
+        python3 << 'PYTHON_EOF'
         import json
         from pathlib import Path
         from datetime import datetime
-        import sys
         
-        print("=" * 70)
+        print("="*70)
         print("Generating master summary...")
-        print("=" * 70)
+        print("="*70)
         
         outputs_dir = Path("outputs")
+        outputs_dir.mkdir(parents=True, exist_ok=True)
         
-        if not outputs_dir.exists():
-            print("⚠️  outputs/ directory does not exist!")
-            outputs_dir.mkdir(parents=True, exist_ok=True)
-            print("✅ Created outputs/ directory")
-        
-        # Experiment registry with metadata
+        # Experiment registry
         experiments = [
-            # Core experiments
-            {
-                "id": "exp_00_baseline",
-                "dir": "exp00_baseline",
-                "category": "core",
-                "observation": "O-1",
-                "description": "Baseline: Natural orthogonality at λ=0"
-            },
-            {
-                "id": "exp_01_spatial_vs_random",
-                "dir": "exp01_spatial",
-                "category": "core",
-                "observation": "O-1",
-                "description": "Spatial arrangements vs random"
-            },
-            {
-                "id": "exp_02_grid_arrangement",
-                "dir": "exp02_grid",
-                "category": "core",
-                "observation": "O-1",
-                "description": "Grid arrangement validation"
-            },
-            {
-                "id": "exp_03_line_arrangement",
-                "dir": "exp03_line",
-                "category": "core",
-                "observation": "O-1",
-                "description": "Line arrangement validation"
-            },
-            {
-                "id": "exp_04_3d_cube_arrangement",
-                "dir": "exp04_3dcube",
-                "category": "core",
-                "observation": "O-1",
-                "description": "3D cube arrangement"
-            },
-            {
-                "id": "exp_05_independence_permutation",
-                "dir": "exp05_independence",
-                "category": "core",
-                "observation": "O-1",
-                "description": "Independence via permutation"
-            },
-            {
-                "id": "exp_06_dimension_robustness",
-                "dir": "exp06_dimension",
-                "category": "core",
-                "observation": "O-1",
-                "description": "Embedding dimension robustness"
-            },
-            {
-                "id": "exp_07_sample_size_robustness",
-                "dir": "exp07_samplesize",
-                "category": "core",
-                "observation": "O-1",
-                "description": "Sample size robustness"
-            },
-            {
-                "id": "exp_08_metric_robustness",
-                "dir": "exp08_metric",
-                "category": "core",
-                "observation": "O-1",
-                "description": "Distance metric robustness"
-            },
-            {
-                "id": "exp_09_topological_disruption",
-                "dir": "exp09_topological",
-                "category": "core",
-                "observation": "O-2",
-                "description": "Topological disruption"
-            },
-            {
-                "id": "exp_10_rotation_invariance",
-                "dir": "exp10_rotation",
-                "category": "core",
-                "observation": "O-3",
-                "description": "Rotation invariance"
-            },
-            {
-                "id": "exp_11_coordinate_noise",
-                "dir": "exp11_coordinate",
-                "category": "core",
-                "observation": "O-3",
-                "description": "Coordinate noise tolerance"
-            },
-            {
-                "id": "exp_12_semantic_noise",
-                "dir": "exp12_semantic",
-                "category": "core",
-                "observation": "O-3",
-                "description": "Semantic noise tolerance"
-            },
-            {
-                "id": "exp_13_value_gate_sweep",
-                "dir": "exp13_valuegate",
-                "category": "core",
-                "observation": "O-4",
-                "description": "Value gate λ-sweep"
-            },
-            # Supplementary experiments
-            {
-                "id": "sup_exp_14_bert",
-                "dir": "sup14_bert",
-                "category": "supplementary",
-                "observation": "O-1, O-4",
-                "description": "BERT real-world validation"
-            },
-            {
-                "id": "sup_exp_15_multilingual",
-                "dir": "sup15_multilingual",
-                "category": "supplementary",
-                "observation": "O-1",
-                "description": "Cross-linguistic validation"
-            },
-            # Beta experiment
-            {
-                "id": "exp_beta_initial_exploration",
-                "dir": "exp_beta",
-                "category": "beta",
-                "observation": "Reference",
-                "description": "Initial exploration (historical)"
-            },
+            ("exp_00_baseline", "exp00_baseline", "core", "O-1", "Baseline validation"),
+            ("exp_01_spatial_vs_random", "exp01_spatial", "core", "O-1", "Spatial vs random"),
+            ("exp_02_grid_arrangement", "exp02_grid", "core", "O-1", "Grid arrangement"),
+            ("exp_03_line_arrangement", "exp03_line", "core", "O-1", "Line arrangement"),
+            ("exp_04_3d_cube_arrangement", "exp04_3dcube", "core", "O-1", "3D cube"),
+            ("exp_05_independence_permutation", "exp05_independence", "core", "O-1", "Independence"),
+            ("exp_06_dimension_robustness", "exp06_dimension", "core", "O-1", "Dimension robustness"),
+            ("exp_07_sample_size_robustness", "exp07_samplesize", "core", "O-1", "Sample size"),
+            ("exp_08_metric_robustness", "exp08_metric", "core", "O-1", "Metric robustness"),
+            ("exp_09_topological_disruption", "exp09_topological", "core", "O-2", "Topological disruption"),
+            ("exp_10_rotation_invariance", "exp10_rotation", "core", "O-3", "Rotation invariance"),
+            ("exp_11_coordinate_noise", "exp11_coordinate", "core", "O-3", "Coordinate noise"),
+            ("exp_12_semantic_noise", "exp12_semantic", "core", "O-3", "Semantic noise"),
+            ("exp_13_value_gate_sweep", "exp13_valuegate", "core", "O-4", "Value gate sweep"),
+            ("sup_exp_14_bert", "sup14_bert", "supplementary", "O-1, O-4", "BERT validation"),
+            ("sup_exp_15_multilingual", "sup15_multilingual", "supplementary", "O-1", "Multilingual"),
+            ("exp_beta_initial_exploration", "exp_beta", "beta", "Reference", "Initial exploration"),
         ]
         
-        # Initialize master summary
-        master_summary = {
+        master = {
             "metadata": {
                 "generated_at": datetime.now().isoformat(),
                 "suite_name": "Intelligence Relativity - Complete Experiment Suite",
                 "repository": "intelligence-relativity",
-                "total_experiments": len(experiments),
-                "observation_framework": {
-                    "O-1": "Natural Orthogonality (SSC ≈ 0 at λ=0)",
-                    "O-2": "Topological Dominance (Phase > Metric)",
-                    "O-3": "Stress Tolerance (Independent axes)",
-                    "O-4": "Value-Gated Coupling (λ controls SSC)"
-                }
+                "total_experiments": len(experiments)
             },
             "summary": {
                 "completed": 0,
-                "failed": 0,
-                "by_category": {
-                    "core": {"total": 14, "completed": 0},
-                    "supplementary": {"total": 2, "completed": 0},
-                    "beta": {"total": 1, "completed": 0}
-                },
-                "by_observation": {
-                    "O-1": {"total": 0, "completed": 0},
-                    "O-2": {"total": 0, "completed": 0},
-                    "O-3": {"total": 0, "completed": 0},
-                    "O-4": {"total": 0, "completed": 0}
-                }
+                "failed": 0
             },
             "experiments": {}
         }
         
-        # Collect experiment results
-        print("\nSearching for experiment results...")
-        for exp_info in experiments:
-            exp_id = exp_info["id"]
-            exp_dir = exp_info["dir"]
-            category = exp_info["category"]
-            
-            # Try to find summary file in multiple locations
-            possible_paths = [
+        # Collect results
+        for exp_id, exp_dir, category, obs, desc in experiments:
+            paths = [
                 outputs_dir / exp_dir / f"{exp_dir}_summary.json",
                 outputs_dir / exp_id / f"{exp_id}_summary.json",
-                outputs_dir / exp_dir / "summary.json",
-                outputs_dir / exp_id / "summary.json",
             ]
             
             found = False
-            for path in possible_paths:
+            for path in paths:
                 if path.exists():
                     try:
                         with open(path) as f:
-                            exp_data = json.load(f)
-                        
-                        # Add metadata
-                        exp_data["metadata"] = {
+                            data = json.load(f)
+                        data["metadata"] = {
                             "category": category,
-                            "observation": exp_info["observation"],
-                            "description": exp_info["description"]
+                            "observation": obs,
+                            "description": desc
                         }
-                        
-                        master_summary["experiments"][exp_id] = exp_data
-                        master_summary["summary"]["completed"] += 1
-                        master_summary["summary"]["by_category"][category]["completed"] += 1
-                        
-                        # Count by observation
-                        for obs in exp_info["observation"].split(", "):
-                            if obs in master_summary["summary"]["by_observation"]:
-                                master_summary["summary"]["by_observation"][obs]["completed"] += 1
-                        
-                        print(f"✅ {exp_id} (found at {path})")
+                        master["experiments"][exp_id] = data
+                        master["summary"]["completed"] += 1
+                        print(f"✅ {exp_id}")
                         found = True
                         break
                     except Exception as e:
-                        print(f"⚠️  {exp_id}: Error reading {path} - {e}")
+                        print(f"⚠️  {exp_id}: {e}")
             
             if not found:
-                print(f"❌ {exp_id}: Summary not found (searched {len(possible_paths)} locations)")
-                master_summary["summary"]["failed"] += 1
+                print(f"❌ {exp_id}: not found")
+                master["summary"]["failed"] += 1
         
-        # Calculate totals for observations
-        for exp_info in experiments:
-            for obs in exp_info["observation"].split(", "):
-                if obs in master_summary["summary"]["by_observation"]:
-                    master_summary["summary"]["by_observation"][obs]["total"] += 1
+        # Save
+        with open(outputs_dir / "master_summary.json", "w") as f:
+            json.dump(master, f, indent=2)
         
-        # Save master summary
-        master_file = outputs_dir / "master_summary.json"
-        with open(master_file, "w") as f:
-            json.dump(master_summary, f, indent=2)
-        
-        print(f"\n{'=' * 70}")
-        print(f"✅ Master summary saved: {master_file}")
-        print(f"   Completed: {master_summary['summary']['completed']}/{len(experiments)}")
-        print(f"   Failed: {master_summary['summary']['failed']}")
-        print(f"{'=' * 70}")
-        PYTHON_SCRIPT
+        print(f"\n{'='*70}")
+        print(f"✅ Completed: {master['summary']['completed']}/{len(experiments)}")
+        print(f"❌ Failed: {master['summary']['failed']}")
+        print(f"{'='*70}")
+        PYTHON_EOF
     
-    - name: Create experiment overview
+    - name: Create overview
       if: always()
       run: |
-        python - <<'PYTHON_SCRIPT'
+        python3 << 'PYTHON_EOF'
         import json
         from pathlib import Path
         
         master_file = Path("outputs/master_summary.json")
         if not master_file.exists():
-            print("⚠️  Master summary not found - skipping overview")
+            print("No master summary found")
             exit(0)
         
         with open(master_file) as f:
             master = json.load(f)
         
-        # Create markdown overview
-        lines = []
+        lines = [
+            "# Intelligence Relativity - Experiment Results\n\n",
+            f"**Generated:** {master['metadata']['generated_at']}\n\n",
+            f"**Completed:** {master['summary']['completed']}/{master['metadata']['total_experiments']}\n\n",
+            "---\n\n",
+            "## Experiments\n\n",
+            "| ID | Category | Observation | Result |\n",
+            "|----|----------|-------------|--------|\n"
+        ]
         
-        # Header
-        lines.append("# Intelligence Relativity - Complete Experiment Suite\n\n")
-        lines.append("**Empirical Validation of the Relativity Theory of Intelligence**\n\n")
-        lines.append(f"**Repository:** `{master['metadata']['repository']}`\n\n")
-        lines.append(f"**Generated:** {master['metadata']['generated_at']}\n\n")
-        lines.append("---\n\n")
-        
-        # Summary statistics
-        summary = master['summary']
-        total = master['metadata']['total_experiments']
-        success_rate = (summary['completed'] / total * 100) if total > 0 else 0
-        
-        lines.append("## Execution Summary\n\n")
-        lines.append(f"- **Total Experiments:** {total}\n")
-        lines.append(f"- **✅ Completed:** {summary['completed']}\n")
-        lines.append(f"- **❌ Failed:** {summary['failed']}\n")
-        lines.append(f"- **Success Rate:** {success_rate:.1f}%\n\n")
-        
-        # By category
-        lines.append("### By Category\n\n")
-        for cat, stats in summary['by_category'].items():
-            pct = (stats['completed'] / stats['total'] * 100) if stats['total'] > 0 else 0
-            lines.append(f"- **{cat.capitalize()}:** {stats['completed']}/{stats['total']} ({pct:.0f}%)\n")
-        lines.append("\n")
-        
-        # By observation
-        lines.append("### By Observation\n\n")
-        for obs, stats in summary['by_observation'].items():
-            desc = master['metadata']['observation_framework'].get(obs, "")
-            pct = (stats['completed'] / stats['total'] * 100) if stats['total'] > 0 else 0
-            lines.append(f"- **{obs}** ({desc}): {stats['completed']}/{stats['total']} ({pct:.0f}%)\n")
-        lines.append("\n---\n\n")
-        
-        # Core experiments table
-        core_exps = {k: v for k, v in master['experiments'].items() 
-                     if v.get('metadata', {}).get('category') == 'core'}
-        
-        if core_exps:
-            lines.append("## Core Experiments (EXP-00 to EXP-13)\n\n")
-            lines.append("| ID | Observation | Description | Key Result |\n")
-            lines.append("|----|-------------|-------------|------------|\n")
+        for exp_id, data in sorted(master['experiments'].items()):
+            meta = data.get('metadata', {})
+            cat = meta.get('category', 'N/A')
+            obs = meta.get('observation', 'N/A')
             
-            for exp_id in sorted(core_exps.keys()):
-                data = core_exps[exp_id]
-                meta = data.get('metadata', {})
-                obs = meta.get('observation', 'N/A')
-                desc = meta.get('description', 'N/A')[:35]
-                
-                # Extract key result
-                if 'results' in data:
-                    if isinstance(data['results'], dict) and 'mean' in data['results']:
-                        result = f"SSC = {data['results']['mean']:.4f}"
-                    else:
-                        result = "Multiple results"
+            if 'results' in data and isinstance(data['results'], dict):
+                if 'mean' in data['results']:
+                    result = f"{data['results']['mean']:.4f}"
                 else:
-                    result = "See JSON"
-                
-                lines.append(f"| {exp_id} | {obs} | {desc} | {result} |\n")
-            lines.append("\n")
-        
-        # Supplementary experiments
-        sup_exps = {k: v for k, v in master['experiments'].items() 
-                    if v.get('metadata', {}).get('category') == 'supplementary'}
-        
-        if sup_exps:
-            lines.append("## Supplementary Experiments (SUP-14, SUP-15)\n\n")
-            lines.append("| ID | Observation | Description | Key Result |\n")
-            lines.append("|----|-------------|-------------|------------|\n")
+                    result = "Multiple"
+            else:
+                result = "See JSON"
             
-            for exp_id in sorted(sup_exps.keys()):
-                data = sup_exps[exp_id]
-                meta = data.get('metadata', {})
-                obs = meta.get('observation', 'N/A')
-                desc = meta.get('description', 'N/A')[:35]
-                
-                # Extract result
-                if 'results' in data:
-                    if 'o1_natural_orthogonality' in data['results']:
-                        result = f"O-1: SSC = {data['results']['o1_natural_orthogonality']['mean']:.4f}"
-                    elif 'results_by_language' in data:
-                        result = f"{len(data['results_by_language'])} languages"
-                    else:
-                        result = "See JSON"
-                else:
-                    result = "See JSON"
-                
-                lines.append(f"| {exp_id} | {obs} | {desc} | {result} |\n")
-            lines.append("\n")
+            lines.append(f"| {exp_id} | {cat} | {obs} | {result} |\n")
         
-        # Beta experiment
-        beta_exps = {k: v for k, v in master['experiments'].items() 
-                     if v.get('metadata', {}).get('category') == 'beta'}
-        
-        if beta_exps:
-            lines.append("## Beta Experiment (Historical Reference)\n\n")
-            lines.append("| ID | Description | Key Result |\n")
-            lines.append("|----|-------------|------------|\n")
-            
-            for exp_id, data in beta_exps.items():
-                meta = data.get('metadata', {})
-                desc = meta.get('description', 'Historical')
-                
-                if 'results' in data and 'mean' in data['results']:
-                    result = f"SSC = {data['results']['mean']:.4f}"
-                else:
-                    result = "Reference"
-                
-                lines.append(f"| {exp_id} | {desc} | {result} |\n")
-            lines.append("\n")
-        
-        # Key findings (only if experiments completed)
-        if summary['completed'] > 0:
-            lines.append("---\n\n")
-            lines.append("## Key Findings\n\n")
-            lines.append("### Observation Framework Validation\n\n")
-            
-            for obs, desc in master['metadata']['observation_framework'].items():
-                stats = summary['by_observation'].get(obs, {})
-                if stats.get('completed', 0) > 0:
-                    lines.append(f"- ✅ **{obs}:** {desc}\n")
-                    lines.append(f"  - Validated in {stats['completed']}/{stats['total']} experiments\n")
-            
-            lines.append("\n### Empirical Evidence\n\n")
-            lines.append("- **Natural Orthogonality (O-1):** SSC ≈ 0 confirmed across multiple conditions\n")
-            lines.append("- **Topological Dominance (O-2):** Phase structure dominates metric distortions\n")
-            lines.append("- **Stress Tolerance (O-3):** Independence maintained under perturbations\n")
-            lines.append("- **Value-Gated Coupling (O-4):** λ monotonically controls SSC\n")
-            lines.append("- **Real-world validation:** BERT embeddings (SUP-14)\n")
-            lines.append("- **Cross-linguistic universality:** English, Japanese, Chinese (SUP-15)\n\n")
-        
-        # Save overview
-        overview_file = Path("outputs/EXPERIMENT_OVERVIEW.md")
-        with open(overview_file, "w") as f:
+        with open("outputs/EXPERIMENT_OVERVIEW.md", "w") as f:
             f.writelines(lines)
         
-        print(f"✅ Overview saved: {overview_file}")
-        print("\n" + "".join(lines))
-        PYTHON_SCRIPT
+        print("✅ Overview created")
+        print("".join(lines))
+        PYTHON_EOF
     
-    - name: Upload complete experiment suite
+    - name: Upload results
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: intelligence-relativity-experiments-${{ github.run_number }}
         path: outputs/
-        retention-days: 90
-        compression-level: 6
         if-no-files-found: warn
     
-    - name: Generate execution report
+    - name: Summary report
       if: always()
       run: |
-        # Load statistics
+        COMPLETED=0
+        FAILED=17
+        
         if [ -f outputs/master_summary.json ]; then
-          COMPLETED=$(python -c "import json; d=json.load(open('outputs/master_summary.json')); print(d['summary']['completed'])" 2>/dev/null || echo "0")
-          FAILED=$(python -c "import json; d=json.load(open('outputs/master_summary.json')); print(d['summary']['failed'])" 2>/dev/null || echo "17")
-          TOTAL=$(python -c "import json; d=json.load(open('outputs/master_summary.json')); print(d['metadata']['total_experiments'])" 2>/dev/null || echo "17")
-        else
-          COMPLETED=0
-          FAILED=17
-          TOTAL=17
+          COMPLETED=$(python3 -c "import json; print(json.load(open('outputs/master_summary.json'))['summary']['completed'])" 2>/dev/null || echo "0")
+          FAILED=$(python3 -c "import json; print(json.load(open('outputs/master_summary.json'))['summary']['failed'])" 2>/dev/null || echo "17")
         fi
         
-        SUCCESS_RATE=$(python -c "print(f'{$COMPLETED/$TOTAL*100:.1f}')" 2>/dev/null || echo "0.0")
-        
-        # Generate GitHub summary
-        cat >> $GITHUB_STEP_SUMMARY <<EOF
-        # Intelligence Relativity - Complete Experiment Suite
-        
-        **Empirical Validation of the Relativity Theory of Intelligence**
+        cat >> $GITHUB_STEP_SUMMARY << EOF
+        # Intelligence Relativity - Experiment Suite Results
         
         **Repository:** \`intelligence-relativity\`
         
-        ---
+        ## Statistics
         
-        ## Execution Statistics
+        - **✅ Completed:** $COMPLETED / 17
+        - **❌ Failed:** $FAILED / 17
         
-        - **Total Experiments:** $TOTAL
-        - **✅ Completed:** $COMPLETED
-        - **❌ Failed:** $FAILED
-        - **Success Rate:** ${SUCCESS_RATE}%
+        ## Download
         
-        ---
-        
-        ## Observation Framework
-        
-        | Observation | Description | Status |
-        |-------------|-------------|--------|
-        | O-1 | Natural Orthogonality (SSC ≈ 0 at λ=0) | $([ $COMPLETED -gt 0 ] && echo "✅ Validated" || echo "⏳ Pending") |
-        | O-2 | Topological Dominance (Phase > Metric) | $([ $COMPLETED -gt 0 ] && echo "✅ Validated" || echo "⏳ Pending") |
-        | O-3 | Stress Tolerance (Independent axes) | $([ $COMPLETED -gt 0 ] && echo "✅ Validated" || echo "⏳ Pending") |
-        | O-4 | Value-Gated Coupling (λ controls SSC) | $([ $COMPLETED -gt 0 ] && echo "✅ Validated" || echo "⏳ Pending") |
+        - 📦 **All Results:** \`intelligence-relativity-experiments-${{ github.run_number }}.zip\`
         
         ---
         
-        ## Artifacts
-        
-        Download complete results:
-        - 📦 **Complete Suite:** \`intelligence-relativity-experiments-${{ github.run_number }}.zip\`
-          - All JSON summaries, CSV data, and PNG visualizations
-        - 📝 **Overview:** See \`outputs/EXPERIMENT_OVERVIEW.md\`
-        - 🔬 **Master Summary:** See \`outputs/master_summary.json\`
-        
-        ---
-        
-        **This execution represents the complete empirical foundation for Intelligence Relativity.**
+        *Empirical validation of the Relativity Theory of Intelligence*
         EOF
-        
-        echo "✅ Execution report generated"
