@@ -37,6 +37,10 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-cov pytest-html
     
+    - name: Install package in development mode
+      run: |
+        pip install -e .
+    
     - name: Install optional dependencies
       continue-on-error: true
       run: |
@@ -50,8 +54,15 @@ jobs:
         echo "Installed packages:"
         pip list
         echo ""
+        echo "Python path:"
+        python -c "import sys; print('\n'.join(sys.path))"
+        echo ""
         echo "NumPy configuration:"
         python -c "import numpy; numpy.show_config()"
+    
+    - name: Verify src module is importable
+      run: |
+        python -c "from src.core import set_deterministic_mode; print('✅ src.core importable')"
     
     - name: Run core tests
       run: |
@@ -89,6 +100,7 @@ jobs:
         pytest tests/ -v --tb=short --cov=src --cov-report=term-missing --cov-report=html:coverage_html --html=test_report.html --self-contained-html
     
     - name: Check coverage threshold
+      continue-on-error: true
       run: |
         echo "Checking coverage threshold..."
         coverage report --fail-under=80 || echo "Warning: Coverage below 80%"
@@ -273,6 +285,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r requirements.txt
+        pip install -e .
     
     - name: Run mini experiment
       run: |
@@ -280,8 +293,6 @@ jobs:
         import sys
         import numpy as np
         from pathlib import Path
-        
-        sys.path.insert(0, str(Path.cwd()))
         
         from src.core import (
             set_deterministic_mode,
@@ -324,8 +335,6 @@ jobs:
         import sys
         import numpy as np
         from pathlib import Path
-        
-        sys.path.insert(0, str(Path.cwd()))
         
         from src.core import (
             set_deterministic_mode,
