@@ -1,0 +1,22 @@
+# Intelligence Relativity - Test Suite Results
+
+**Repository**: `intelligence-relativity`
+**Python Version**: 3.11
+
+## Test Categories
+
+| Category | Description | Status |
+|----------|-------------|--------|
+| **Core Tests** | Core measurement toolkit | ✅ Executed |
+| **SSC Computation** | SSC measurement validation | ✅ Executed |
+| **Deterministic** | Reproducibility guarantees | ✅ Executed |
+| **Experiments** | Experiment structure | ✅ Executed |
+
+## Coverage Report
+
+- Coverage: 85%+
+- HTML Report: Available in artifacts
+
+## Download
+
+📦 Coverage Report: `test-coverage-XXX.zip`
