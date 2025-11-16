@@ -2,10 +2,34 @@
 name = "intelligence-relativity"
 version = "1.1.0"
 description = "Empirical Validation of the Relativity Theory of Intelligence"
-authors = [{name = "Hideki"}]
+authors = [{name = "Hideki", email = ""}]
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
+keywords = [
+    "intelligence",
+    "relativity",
+    "cognitive-science",
+    "measurement",
+    "reproducibility",
+    "SSC",
+    "semantic-spatial-correlation",
+    "optics-of-intelligence"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://github.com/HIDEKI-SQ/intelligence-relativity"
+Repository = "https://github.com/HIDEKI-SQ/intelligence-relativity"
+Issues = "https://github.com/HIDEKI-SQ/intelligence-relativity/issues"
 
 dependencies = [
     "numpy>=2.3.0",
@@ -34,14 +58,46 @@ build-backend = "setuptools.build_meta"
 [tool.black]
 line-length = 100
 target-version = ['py311']
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | build
+  | dist
+  | outputs
+)/
+'''
 
 [tool.isort]
 profile = "black"
 line_length = 100
+skip_gitignore = true
+known_first_party = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
