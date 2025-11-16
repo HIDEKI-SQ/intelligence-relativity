@@ -4,8 +4,9 @@ Validates that compute_ssc() correctly detects strong correlation
 when semantic and spatial structures are intentionally aligned.
 
 Key Finding:
-    SSC ≈ 1.0 with perfect alignment (confirms measurement validity)
+    SSC ≈ +1.0 with perfect alignment (confirms measurement validity)
     SSC ≈ -1.0 with perfect anti-alignment (confirms bidirectionality)
+    SSC ≈ 0.0 with no alignment (confirms baseline)
 
 Author: HIDEKI
 Date: 2025-11
@@ -44,31 +45,40 @@ def generate_positive_control(n_items, seed):
     """Generate SSC ≈ +1.0 case (perfect positive correlation)
     
     Strategy:
-        - Semantic: Random values with clear ordering
+        - Semantic: Multi-dimensional embeddings where ALL dimensions
+          follow the same ordering pattern
         - Spatial: Same ordering on a line
-        - Result: High rank correlation → SSC ≈ 1.0
+        - Result: correlation distances preserve order → SSC ≈ +1.0
+    
+    Key insight:
+        correlation distance = 1 - pearson_corr(v_i, v_j)
+        If all dimensions of embeddings follow same pattern,
+        correlation distances will preserve the ordering.
     
     Returns:
-        embeddings: (n_items, 2) array with correlation structure
-        coords: (n_items, 2) array with matching spatial structure
+        embeddings: (n_items, 5) array with consistent ordering
+        coords: (n_items, 2) array with matching spatial ordering
     """
     rng = np.random.default_rng(seed)
     
-    # Create ordered sequence
-    values = rng.uniform(0, 100, n_items)
-    sorted_indices = np.argsort(values)
-    sorted_values = values[sorted_indices]
+    # Create base ordering
+    order = np.arange(n_items).astype(float)
+    normalized_order = order / (n_items - 1)  # Scale to [0, 1]
     
-    # Semantic embeddings: 2D with primary dimension sorted
+    # Semantic embeddings: 5 dimensions, ALL following the same order
+    # Small noise ensures correlation distance is well-defined
     embeddings = np.column_stack([
-        sorted_values,
-        rng.normal(0, 5, n_items)  # Secondary dimension (noise)
+        normalized_order + rng.normal(0, 0.01, n_items),
+        normalized_order + rng.normal(0, 0.01, n_items),
+        normalized_order + rng.normal(0, 0.01, n_items),
+        normalized_order + rng.normal(0, 0.01, n_items),
+        normalized_order + rng.normal(0, 0.01, n_items),
     ])
     
-    # Spatial coordinates: Same ordering on a line
+    # Spatial coordinates: same ordering on a line
     coords = np.column_stack([
-        sorted_values,  # Same ordering
-        rng.normal(0, 1, n_items)  # Small y-axis noise
+        order,
+        np.zeros(n_items)
     ])
     
     return embeddings, coords
@@ -78,31 +88,32 @@ def generate_negative_control(n_items, seed):
     """Generate SSC ≈ -1.0 case (perfect negative correlation)
     
     Strategy:
-        - Semantic: Random values with clear ordering
-        - Spatial: Reverse ordering on a line
+        - Semantic: Same as positive (all dimensions follow order)
+        - Spatial: REVERSE ordering on a line
         - Result: Perfect anti-correlation → SSC ≈ -1.0
     
     Returns:
-        embeddings: (n_items, 2) array with correlation structure
-        coords: (n_items, 2) array with reversed spatial structure
+        embeddings: (n_items, 5) array with ordering
+        coords: (n_items, 2) array with REVERSED spatial ordering
     """
     rng = np.random.default_rng(seed)
     
-    # Create ordered sequence
-    values = rng.uniform(0, 100, n_items)
-    sorted_indices = np.argsort(values)
-    sorted_values = values[sorted_indices]
+    order = np.arange(n_items).astype(float)
+    normalized_order = order / (n_items - 1)
     
-    # Semantic embeddings: 2D with primary dimension sorted
+    # Semantic embeddings: same as positive control
     embeddings = np.column_stack([
-        sorted_values,
-        rng.normal(0, 5, n_items)
+        normalized_order + rng.normal(0, 0.01, n_items),
+        normalized_order + rng.normal(0, 0.01, n_items),
+        normalized_order + rng.normal(0, 0.01, n_items),
+        normalized_order + rng.normal(0, 0.01, n_items),
+        normalized_order + rng.normal(0, 0.01, n_items),
     ])
     
-    # Spatial coordinates: REVERSE ordering
+    # Spatial coordinates: REVERSED ordering
     coords = np.column_stack([
-        sorted_values[::-1],  # Reversed!
-        rng.normal(0, 1, n_items)
+        order[::-1],  # Reversed!
+        np.zeros(n_items)
     ])
     
     return embeddings, coords
@@ -112,17 +123,17 @@ def generate_zero_control(n_items, seed):
     """Generate SSC ≈ 0 case (no correlation - baseline)
     
     Strategy:
-        - Semantic: Random structure
-        - Spatial: Independent random structure
-        - Result: No correlation → SSC ≈ 0
+        - Semantic: Random high-dimensional structure
+        - Spatial: Independent random 2D structure
+        - Result: No systematic relationship → SSC ≈ 0
     
     Returns:
-        embeddings: (n_items, 2) array
-        coords: (n_items, 2) array
+        embeddings: (n_items, 10) random array
+        coords: (n_items, 2) independent random array
     """
     rng = np.random.default_rng(seed)
     
-    # Semantic: Random high-dimensional projection
+    # Semantic: Random high-dimensional
     embeddings = rng.normal(0, 1, (n_items, 10))
     
     # Spatial: Independent random 2D
@@ -146,10 +157,15 @@ def run_control_experiment(control_type, n_trials, base_seed):
     
     if control_type == 'positive':
         generator = generate_positive_control
+        expected = "+1.0"
     elif control_type == 'negative':
         generator = generate_negative_control
+        expected = "-1.0"
     else:
         generator = generate_zero_control
+        expected = "0.0"
+    
+    print(f"    Expected: SSC ≈ {expected}")
     
     ssc_values = []
     
@@ -165,7 +181,7 @@ def run_control_experiment(control_type, n_trials, base_seed):
         ssc_values.append(ssc)
         
         if (i + 1) % 200 == 0:
-            print(f"    {i + 1}/{n_trials} trials")
+            print(f"    {i + 1}/{n_trials} trials completed")
     
     ssc_values = np.array(ssc_values)
     
@@ -187,7 +203,7 @@ def run_control_experiment(control_type, n_trials, base_seed):
 
 
 def create_visualization(results):
-    """Create comprehensive visualization"""
+    """Create comprehensive 3-panel visualization"""
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
     
     colors = {
@@ -252,13 +268,24 @@ def create_summary_plot(results):
     colors_list = ['red', 'gray', 'green']
     
     x = np.arange(len(control_types))
-    ax.bar(x, means, yerr=stds, capsize=10, alpha=0.7, 
-           color=colors_list, edgecolor='black', linewidth=2)
+    bars = ax.bar(x, means, yerr=stds, capsize=10, alpha=0.7, 
+                  color=colors_list, edgecolor='black', linewidth=2)
     
     # Target lines
-    ax.axhline(y=-1.0, color='red', linestyle='--', linewidth=1.5, alpha=0.5, label='Target -1.0')
-    ax.axhline(y=0.0, color='gray', linestyle='--', linewidth=1.5, alpha=0.5, label='Target 0.0')
-    ax.axhline(y=1.0, color='green', linestyle='--', linewidth=1.5, alpha=0.5, label='Target +1.0')
+    ax.axhline(y=-1.0, color='red', linestyle='--', linewidth=1.5, alpha=0.5, 
+               label='Target -1.0')
+    ax.axhline(y=0.0, color='gray', linestyle='--', linewidth=1.5, alpha=0.5, 
+               label='Target 0.0')
+    ax.axhline(y=1.0, color='green', linestyle='--', linewidth=1.5, alpha=0.5, 
+               label='Target +1.0')
+    
+    # Add value labels on bars
+    for i, (bar, mean) in enumerate(zip(bars, means)):
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height,
+                f'{mean:.3f}',
+                ha='center', va='bottom' if height >= 0 else 'top',
+                fontsize=11, fontweight='bold')
     
     ax.set_xticks(x)
     ax.set_xticklabels(['Negative\nControl', 'Zero\nControl', 'Positive\nControl'], 
@@ -284,6 +311,9 @@ def run_sup15():
     print("="*70)
     print(f"\nTesting compute_ssc() with controlled correlation patterns")
     print(f"N_ITEMS: {N_ITEMS}, N_TRIALS: {N_TRIALS}")
+    print()
+    print("This experiment validates that compute_ssc() correctly")
+    print("measures correlation across the full dynamic range [-1, +1]")
     
     set_deterministic_mode()
     verify_environment(OUTPUT_DIR / "env.txt")
@@ -348,30 +378,42 @@ def run_sup15():
     print("="*70)
     
     # Validation checks
-    pos_valid = 0.7 < results['positive']['mean'] < 1.0
-    zero_valid = -0.1 < results['zero']['mean'] < 0.1
-    neg_valid = -1.0 < results['negative']['mean'] < -0.7
+    pos_mean = results['positive']['mean']
+    zero_mean = results['zero']['mean']
+    neg_mean = results['negative']['mean']
+    
+    pos_valid = 0.7 < pos_mean < 1.0
+    zero_valid = -0.1 < zero_mean < 0.1
+    neg_valid = -1.0 < neg_mean < -0.7
     
     if pos_valid:
-        print("  ✅ Positive control: SSC correctly detects strong correlation")
+        print(f"  ✅ Positive control: SSC = {pos_mean:.3f} (expected ~0.9)")
+        print("     → Measurement correctly detects strong positive correlation")
     else:
-        print("  ⚠️  Positive control: Unexpected SSC value")
+        print(f"  ⚠️  Positive control: SSC = {pos_mean:.3f} (outside expected range)")
     
     if zero_valid:
-        print("  ✅ Zero control: SSC correctly shows no correlation")
+        print(f"  ✅ Zero control: SSC = {zero_mean:.3f} (expected ~0.0)")
+        print("     → Measurement correctly shows no correlation")
     else:
-        print("  ⚠️  Zero control: Unexpected SSC value")
+        print(f"  ⚠️  Zero control: SSC = {zero_mean:.3f} (outside expected range)")
     
     if neg_valid:
-        print("  ✅ Negative control: SSC correctly detects anti-correlation")
+        print(f"  ✅ Negative control: SSC = {neg_mean:.3f} (expected ~-0.9)")
+        print("     → Measurement correctly detects strong negative correlation")
     else:
-        print("  ⚠️  Negative control: Unexpected SSC value")
+        print(f"  ⚠️  Negative control: SSC = {neg_mean:.3f} (outside expected range)")
+    
+    print()
     
     if pos_valid and zero_valid and neg_valid:
-        print("\n  🎉 VALIDATION COMPLETE: compute_ssc() is working correctly")
-        print("  🎉 Full dynamic range confirmed: SSC ∈ [-1, +1]")
+        print("  " + "🎉"*35)
+        print("  🎉 VALIDATION COMPLETE: compute_ssc() is working correctly! 🎉")
+        print("  🎉 Full dynamic range confirmed: SSC ∈ [-1, +1]              🎉")
+        print("  " + "🎉"*35)
     else:
-        print("\n  ⚠️  Some controls outside expected range - review needed")
+        print("\n  ⚠️  Some controls outside expected range")
+        print("  ⚠️  Review data generation or increase tolerance")
     
     print("="*70)
     
