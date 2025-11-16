@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    
     strategy:
       matrix:
         python-version:
@@ -37,10 +40,6 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-cov pytest-html
     
-    - name: Install package in development mode
-      run: |
-        pip install -e .
-    
     - name: Install optional dependencies
       continue-on-error: true
       run: |
@@ -51,17 +50,21 @@ jobs:
         echo "Python version:"
         python --version
         echo ""
+        echo "PYTHONPATH:"
+        echo $PYTHONPATH
+        echo ""
+        echo "Working directory:"
+        pwd
+        echo ""
+        echo "Directory contents:"
+        ls -la
+        echo ""
         echo "Installed packages:"
         pip list
-        echo ""
-        echo "Python path:"
-        python -c "import sys; print('\n'.join(sys.path))"
-        echo ""
-        echo "NumPy configuration:"
-        python -c "import numpy; numpy.show_config()"
     
     - name: Verify src module is importable
       run: |
+        python -c "import sys; print('Python path:', sys.path)"
         python -c "from src.core import set_deterministic_mode; print('✅ src.core importable')"
     
     - name: Run core tests
@@ -177,37 +180,6 @@ jobs:
         
         ---
         
-        ## Test Categories Details
-        
-        ### Core Tests (`test_core.py`)
-        - Deterministic mode setup
-        - Environment verification
-        - Data generation utilities
-        - Statistical tools
-        - Manifest generation
-        
-        ### SSC Computation Tests (`test_ssc_computation.py`)
-        - Perfect correlation detection
-        - Zero correlation (O-1) validation
-        - Input validation
-        - Cross-implementation consistency
-        - Numerical stability
-        
-        ### Deterministic Tests (`test_deterministic.py`)
-        - Environment variable setup
-        - Perfect reproducibility
-        - Hash stability
-        - Bootstrap reproducibility
-        - Cross-implementation consistency
-        
-        ### Experiment Tests (`test_experiments.py`)
-        - Module import validation
-        - Required function presence
-        - Parameter consistency
-        - Output structure validation
-        
-        ---
-        
         ## Download
         
         - 📦 **Coverage Report**: `test-coverage-${{ github.run_number }}.zip`
@@ -273,6 +245,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -285,14 +260,11 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r requirements.txt
-        pip install -e .
     
     - name: Run mini experiment
       run: |
         python3 << 'PYTHON_EOF'
-        import sys
         import numpy as np
-        from pathlib import Path
         
         from src.core import (
             set_deterministic_mode,
@@ -332,9 +304,7 @@ jobs:
     - name: Verify reproducibility
       run: |
         python3 << 'PYTHON_EOF'
-        import sys
         import numpy as np
-        from pathlib import Path
         
         from src.core import (
             set_deterministic_mode,
@@ -366,7 +336,7 @@ jobs:
         print(f"SSC (Run 2): {ssc2:.10f}")
         print(f"Difference:  {abs(ssc1 - ssc2):.2e}")
         
-        print("\n✅ Perfect reproducibility confirmed")
+        print("\n✅ Reproducibility verified")
         print("=" * 70)
         PYTHON_EOF
     
@@ -385,10 +355,10 @@ jobs:
         ## Results
         
         - **O-1 Validation**: SSC ≈ 0 confirmed
-        - **Determinism**: Perfect reproducibility
-        - **Integration**: Full pipeline functional
+        - **Determinism**: Verified
+        - **Integration**: Functional
         
         ---
         
-        **All integration tests passed successfully**
+        **All integration tests passed**
         EOF
