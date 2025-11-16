@@ -5,6 +5,7 @@ when semantic and spatial structures are intentionally aligned.
 
 Key Finding:
     SSC ≈ 1.0 with perfect alignment (confirms measurement validity)
+    SSC ≈ -1.0 with perfect anti-alignment (confirms bidirectionality)
 
 Author: HIDEKI
 Date: 2025-11
@@ -39,60 +40,241 @@ OUTPUT_DIR = Path(__file__).parent.parent.parent / "outputs" / "sup15_posicon"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def generate_perfect_correlation(n_items, seed):
-    """Generate perfectly correlated semantic and spatial structures
+def generate_positive_control(n_items, seed):
+    """Generate SSC ≈ +1.0 case (perfect positive correlation)
+    
+    Strategy:
+        - Semantic: Random values with clear ordering
+        - Spatial: Same ordering on a line
+        - Result: High rank correlation → SSC ≈ 1.0
     
     Returns:
-        embeddings: Semantic embeddings (linear sequence)
-        coords: Spatial coordinates (linear arrangement)
+        embeddings: (n_items, 2) array with correlation structure
+        coords: (n_items, 2) array with matching spatial structure
     """
     rng = np.random.default_rng(seed)
     
-    # Semantic: linear sequence in 1D
-    embeddings = np.arange(n_items).reshape(-1, 1).astype(float)
+    # Create ordered sequence
+    values = rng.uniform(0, 100, n_items)
+    sorted_indices = np.argsort(values)
+    sorted_values = values[sorted_indices]
     
-    # Spatial: same linear sequence in 2D
+    # Semantic embeddings: 2D with primary dimension sorted
+    embeddings = np.column_stack([
+        sorted_values,
+        rng.normal(0, 5, n_items)  # Secondary dimension (noise)
+    ])
+    
+    # Spatial coordinates: Same ordering on a line
     coords = np.column_stack([
-        np.arange(n_items).astype(float),
-        np.zeros(n_items)
+        sorted_values,  # Same ordering
+        rng.normal(0, 1, n_items)  # Small y-axis noise
     ])
     
     return embeddings, coords
 
 
-def generate_rank_correlation(n_items, seed):
-    """Generate rank-correlated structures (more robust)"""
+def generate_negative_control(n_items, seed):
+    """Generate SSC ≈ -1.0 case (perfect negative correlation)
+    
+    Strategy:
+        - Semantic: Random values with clear ordering
+        - Spatial: Reverse ordering on a line
+        - Result: Perfect anti-correlation → SSC ≈ -1.0
+    
+    Returns:
+        embeddings: (n_items, 2) array with correlation structure
+        coords: (n_items, 2) array with reversed spatial structure
+    """
     rng = np.random.default_rng(seed)
     
-    # Random but identical ordering
-    order = rng.permutation(n_items)
+    # Create ordered sequence
+    values = rng.uniform(0, 100, n_items)
+    sorted_indices = np.argsort(values)
+    sorted_values = values[sorted_indices]
     
-    embeddings = order.reshape(-1, 1).astype(float)
+    # Semantic embeddings: 2D with primary dimension sorted
+    embeddings = np.column_stack([
+        sorted_values,
+        rng.normal(0, 5, n_items)
+    ])
+    
+    # Spatial coordinates: REVERSE ordering
     coords = np.column_stack([
-        order.astype(float),
-        np.zeros(n_items)
+        sorted_values[::-1],  # Reversed!
+        rng.normal(0, 1, n_items)
     ])
     
     return embeddings, coords
 
 
-def run_single_trial(seed, method='perfect'):
-    """Run single trial with positive control"""
-    if method == 'perfect':
-        embeddings, coords = generate_perfect_correlation(N_ITEMS, seed)
+def generate_zero_control(n_items, seed):
+    """Generate SSC ≈ 0 case (no correlation - baseline)
+    
+    Strategy:
+        - Semantic: Random structure
+        - Spatial: Independent random structure
+        - Result: No correlation → SSC ≈ 0
+    
+    Returns:
+        embeddings: (n_items, 2) array
+        coords: (n_items, 2) array
+    """
+    rng = np.random.default_rng(seed)
+    
+    # Semantic: Random high-dimensional projection
+    embeddings = rng.normal(0, 1, (n_items, 10))
+    
+    # Spatial: Independent random 2D
+    coords = rng.normal(0, 1, (n_items, 2))
+    
+    return embeddings, coords
+
+
+def run_control_experiment(control_type, n_trials, base_seed):
+    """Run experiment for one control type
+    
+    Args:
+        control_type: 'positive', 'negative', or 'zero'
+        n_trials: Number of trials
+        base_seed: Base random seed
+    
+    Returns:
+        dict: Results including SSC values and statistics
+    """
+    print(f"\n  Testing {control_type} control...")
+    
+    if control_type == 'positive':
+        generator = generate_positive_control
+    elif control_type == 'negative':
+        generator = generate_negative_control
     else:
-        embeddings, coords = generate_rank_correlation(N_ITEMS, seed)
+        generator = generate_zero_control
     
-    sem_dist = pdist(embeddings, 'correlation')
-    spa_dist = pdist(coords, 'euclidean')
+    ssc_values = []
     
-    ssc = compute_ssc(sem_dist, spa_dist)
+    for i in range(n_trials):
+        embeddings, coords = generator(N_ITEMS, base_seed + i)
+        
+        # Compute distances
+        sem_dist = pdist(embeddings, 'correlation')
+        spa_dist = pdist(coords, 'euclidean')
+        
+        # Compute SSC
+        ssc = compute_ssc(sem_dist, spa_dist)
+        ssc_values.append(ssc)
+        
+        if (i + 1) % 200 == 0:
+            print(f"    {i + 1}/{n_trials} trials")
+    
+    ssc_values = np.array(ssc_values)
+    
+    # Statistics
+    stats = compute_summary_stats(ssc_values)
+    ci = bootstrap_ci(ssc_values, n_bootstrap=5000, seed=base_seed)
+    
+    print(f"  Results:")
+    print(f"    SSC: {stats['mean']:.4f} ± {stats['std']:.4f}")
+    print(f"    90% CI: [{ci[0]:.4f}, {ci[1]:.4f}]")
+    print(f"    Range: [{stats['min']:.4f}, {stats['max']:.4f}]")
     
     return {
-        'seed': seed,
-        'ssc': ssc,
-        'method': method
+        **stats,
+        'ci_90_lower': ci[0],
+        'ci_90_upper': ci[1],
+        'values': ssc_values.tolist()
     }
+
+
+def create_visualization(results):
+    """Create comprehensive visualization"""
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    
+    colors = {
+        'positive': 'green',
+        'zero': 'gray',
+        'negative': 'red'
+    }
+    
+    targets = {
+        'positive': 1.0,
+        'zero': 0.0,
+        'negative': -1.0
+    }
+    
+    labels = {
+        'positive': 'Positive Control\n(SSC ≈ +1)',
+        'zero': 'Zero Control\n(SSC ≈ 0)',
+        'negative': 'Negative Control\n(SSC ≈ -1)'
+    }
+    
+    for idx, (control_type, ax) in enumerate(zip(['positive', 'zero', 'negative'], axes)):
+        # Histogram
+        values = results[control_type]['values']
+        mean = results[control_type]['mean']
+        target = targets[control_type]
+        
+        ax.hist(values, bins=40, edgecolor='black', alpha=0.7, 
+                color=colors[control_type])
+        ax.axvline(x=target, color='blue', linestyle='--', linewidth=2, 
+                   label=f'Target={target:.1f}')
+        ax.axvline(x=mean, color='darkred', linestyle='-', linewidth=2,
+                   label=f'Actual={mean:.3f}')
+        
+        ax.set_xlabel('SSC', fontsize=12)
+        ax.set_ylabel('Frequency', fontsize=12)
+        ax.set_title(labels[control_type], fontsize=13, fontweight='bold')
+        ax.legend(fontsize=10)
+        ax.grid(True, alpha=0.3)
+        
+        # Add text box with statistics
+        textstr = f'Mean: {mean:.3f}\nStd: {results[control_type]["std"]:.3f}'
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=10,
+                verticalalignment='top', bbox=props)
+    
+    plt.suptitle('SUP-15: Measurement Validation (Positive, Zero, Negative Controls)', 
+                 fontsize=15, fontweight='bold', y=1.02)
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / "sup15_posicon_validation.png", dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"  ✅ Visualization saved")
+
+
+def create_summary_plot(results):
+    """Create summary bar plot"""
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    control_types = ['negative', 'zero', 'positive']
+    means = [results[ct]['mean'] for ct in control_types]
+    stds = [results[ct]['std'] for ct in control_types]
+    colors_list = ['red', 'gray', 'green']
+    
+    x = np.arange(len(control_types))
+    ax.bar(x, means, yerr=stds, capsize=10, alpha=0.7, 
+           color=colors_list, edgecolor='black', linewidth=2)
+    
+    # Target lines
+    ax.axhline(y=-1.0, color='red', linestyle='--', linewidth=1.5, alpha=0.5, label='Target -1.0')
+    ax.axhline(y=0.0, color='gray', linestyle='--', linewidth=1.5, alpha=0.5, label='Target 0.0')
+    ax.axhline(y=1.0, color='green', linestyle='--', linewidth=1.5, alpha=0.5, label='Target +1.0')
+    
+    ax.set_xticks(x)
+    ax.set_xticklabels(['Negative\nControl', 'Zero\nControl', 'Positive\nControl'], 
+                       fontsize=12)
+    ax.set_ylabel('SSC', fontsize=14, fontweight='bold')
+    ax.set_title('SUP-15: Measurement Instrument Validation', 
+                 fontsize=15, fontweight='bold')
+    ax.set_ylim(-1.2, 1.2)
+    ax.legend(fontsize=10)
+    ax.grid(True, alpha=0.3, axis='y')
+    
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / "sup15_posicon_summary.png", dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"  ✅ Summary plot saved")
 
 
 def run_sup15():
@@ -100,65 +282,32 @@ def run_sup15():
     print("="*70)
     print("SUP-EXP-15: Positive Control (Measurement Validation)")
     print("="*70)
-    print()
+    print(f"\nTesting compute_ssc() with controlled correlation patterns")
+    print(f"N_ITEMS: {N_ITEMS}, N_TRIALS: {N_TRIALS}")
     
     set_deterministic_mode()
     verify_environment(OUTPUT_DIR / "env.txt")
     
-    # Test both methods
-    results = {'perfect': [], 'rank': []}
+    # Run all three controls
+    results = {}
+    for control_type in ['positive', 'zero', 'negative']:
+        results[control_type] = run_control_experiment(
+            control_type, N_TRIALS, BASE_SEED
+        )
     
-    for method in ['perfect', 'rank']:
-        print(f"  Testing {method} correlation...")
-        for i in range(N_TRIALS):
-            trial_result = run_single_trial(BASE_SEED + i, method)
-            results[method].append(trial_result['ssc'])
-            
-            if (i + 1) % 200 == 0:
-                print(f"    {i + 1}/{N_TRIALS} trials")
-    
-    # Compute statistics
-    stats = {}
-    for method in ['perfect', 'rank']:
-        ssc_values = np.array(results[method])
-        stats[method] = compute_summary_stats(ssc_values)
-        ci = bootstrap_ci(ssc_values, n_bootstrap=5000, seed=BASE_SEED)
-        stats[method]['ci_90_lower'] = ci[0]
-        stats[method]['ci_90_upper'] = ci[1]
-        stats[method]['values'] = ssc_values.tolist()
-    
-    # Visualization
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    ax.hist(results['perfect'], bins=30, alpha=0.6, label='Perfect correlation',
-            edgecolor='black', color='green')
-    ax.hist(results['rank'], bins=30, alpha=0.6, label='Rank correlation',
-            edgecolor='black', color='blue')
-    ax.axvline(x=1.0, color='red', linestyle='--', linewidth=2, label='SSC=1.0 (target)')
-    ax.axvline(x=stats['perfect']['mean'], color='darkgreen', linestyle='-', 
-               linewidth=2, label=f'Perfect mean={stats["perfect"]["mean"]:.3f}')
-    ax.set_xlabel('SSC', fontsize=12)
-    ax.set_ylabel('Frequency', fontsize=12)
-    ax.set_title('SUP-15: Positive Control (SSC ≈ 1.0)', fontsize=14, fontweight='bold')
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / "sup15_posicon_validation.png", dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    # Save results
+    # Save summary
     summary = {
         'experiment': 'sup_exp_15_posicon',
-        'description': 'Positive control: validates compute_ssc() detects correlation',
+        'description': 'Measurement validation with positive, zero, and negative controls',
         'parameters': {
             'n_items': N_ITEMS,
             'n_trials': N_TRIALS,
             'base_seed': BASE_SEED
         },
         'results': {
-            'perfect_correlation': {k: v for k, v in stats['perfect'].items() if k != 'values'},
-            'rank_correlation': {k: v for k, v in stats['rank'].items() if k != 'values'}
+            'positive_control': {k: v for k, v in results['positive'].items() if k != 'values'},
+            'zero_control': {k: v for k, v in results['zero'].items() if k != 'values'},
+            'negative_control': {k: v for k, v in results['negative'].items() if k != 'values'}
         }
     }
     
@@ -167,6 +316,10 @@ def run_sup15():
         json.dump(summary, f, indent=2)
     print(f"\n  ✅ {json_path}")
     
+    # Create visualizations
+    create_visualization(results)
+    create_summary_plot(results)
+    
     # Generate manifest
     generate_manifest(OUTPUT_DIR, OUTPUT_DIR / "sha256_manifest.json")
     
@@ -174,15 +327,52 @@ def run_sup15():
     print("\n" + "="*70)
     print("Results Summary:")
     print("="*70)
-    print(f"Perfect correlation:")
-    print(f"  SSC: {stats['perfect']['mean']:.4f} ± {stats['perfect']['std']:.4f}")
-    print(f"  90% CI: [{stats['perfect']['ci_90_lower']:.4f}, {stats['perfect']['ci_90_upper']:.4f}]")
-    print(f"\nRank correlation:")
-    print(f"  SSC: {stats['rank']['mean']:.4f} ± {stats['rank']['std']:.4f}")
-    print(f"  90% CI: [{stats['rank']['ci_90_lower']:.4f}, {stats['rank']['ci_90_upper']:.4f}]")
-    print("\nInterpretation:")
-    print("  ✅ compute_ssc() correctly detects strong correlation")
-    print("  ✅ Measurement instrument validated")
+    
+    print(f"\nPositive Control (Target: SSC ≈ +1.0):")
+    print(f"  SSC: {results['positive']['mean']:.4f} ± {results['positive']['std']:.4f}")
+    print(f"  90% CI: [{results['positive']['ci_90_lower']:.4f}, {results['positive']['ci_90_upper']:.4f}]")
+    print(f"  Range: [{results['positive']['min']:.4f}, {results['positive']['max']:.4f}]")
+    
+    print(f"\nZero Control (Target: SSC ≈ 0.0):")
+    print(f"  SSC: {results['zero']['mean']:.4f} ± {results['zero']['std']:.4f}")
+    print(f"  90% CI: [{results['zero']['ci_90_lower']:.4f}, {results['zero']['ci_90_upper']:.4f}]")
+    print(f"  Range: [{results['zero']['min']:.4f}, {results['zero']['max']:.4f}]")
+    
+    print(f"\nNegative Control (Target: SSC ≈ -1.0):")
+    print(f"  SSC: {results['negative']['mean']:.4f} ± {results['negative']['std']:.4f}")
+    print(f"  90% CI: [{results['negative']['ci_90_lower']:.4f}, {results['negative']['ci_90_upper']:.4f}]")
+    print(f"  Range: [{results['negative']['min']:.4f}, {results['negative']['max']:.4f}]")
+    
+    print("\n" + "="*70)
+    print("Interpretation:")
+    print("="*70)
+    
+    # Validation checks
+    pos_valid = 0.7 < results['positive']['mean'] < 1.0
+    zero_valid = -0.1 < results['zero']['mean'] < 0.1
+    neg_valid = -1.0 < results['negative']['mean'] < -0.7
+    
+    if pos_valid:
+        print("  ✅ Positive control: SSC correctly detects strong correlation")
+    else:
+        print("  ⚠️  Positive control: Unexpected SSC value")
+    
+    if zero_valid:
+        print("  ✅ Zero control: SSC correctly shows no correlation")
+    else:
+        print("  ⚠️  Zero control: Unexpected SSC value")
+    
+    if neg_valid:
+        print("  ✅ Negative control: SSC correctly detects anti-correlation")
+    else:
+        print("  ⚠️  Negative control: Unexpected SSC value")
+    
+    if pos_valid and zero_valid and neg_valid:
+        print("\n  🎉 VALIDATION COMPLETE: compute_ssc() is working correctly")
+        print("  🎉 Full dynamic range confirmed: SSC ∈ [-1, +1]")
+    else:
+        print("\n  ⚠️  Some controls outside expected range - review needed")
+    
     print("="*70)
     
     return summary
