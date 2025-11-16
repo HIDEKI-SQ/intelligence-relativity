@@ -1,4 +1,4 @@
-"""SUP-EXP-16: Multilingual Validation
+"""SUP-EXP-15: Multilingual Validation
 
 Cross-linguistic validation of O-1 (Natural Orthogonality)
 using BERT models for English, Japanese, and Chinese.
@@ -81,7 +81,7 @@ LANGUAGE_CONFIGS = {
     }
 }
 
-OUTPUT_DIR = Path(__file__).parent.parent.parent / "outputs" / "sup16_multilingual"
+OUTPUT_DIR = Path(__file__).parent.parent.parent / "outputs" / "sup15_multilingual"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -179,19 +179,19 @@ def create_visualization(results_by_lang):
     ax.set_xticks(x)
     ax.set_xticklabels([results_by_lang[lang]['language'] for lang in languages], fontsize=12)
     ax.set_ylabel('SSC', fontsize=12)
-    ax.set_title('SUP-16: Cross-Linguistic Validation of O-1', fontsize=14, fontweight='bold')
+    ax.set_title('SUP-15: Cross-Linguistic Validation of O-1', fontsize=14, fontweight='bold')
     ax.legend()
     ax.grid(True, alpha=0.3, axis='y')
     
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / "sup16_multilingual_comparison.png", dpi=300, bbox_inches='tight')
+    plt.savefig(OUTPUT_DIR / "sup15_multilingual_comparison.png", dpi=300, bbox_inches='tight')
     plt.close()
 
 
-def run_sup16():
-    """Run complete SUP-16 experiment"""
+def run_sup15():
+    """Run complete SUP-15 experiment"""
     print("="*70)
-    print("SUP-EXP-16: Multilingual Validation")
+    print("SUP-EXP-15: Multilingual Validation")
     print("="*70)
     
     set_deterministic_mode()
@@ -207,7 +207,7 @@ def run_sup16():
     
     # Save summary
     summary = {
-        'experiment': 'sup_exp_16_multilingual',
+        'experiment': 'sup_exp_15_multilingual',
         'description': 'Cross-linguistic validation of O-1',
         'parameters': {
             'n_trials': N_TRIALS,
@@ -217,7 +217,7 @@ def run_sup16():
         'results_by_language': results_by_lang
     }
     
-    json_path = OUTPUT_DIR / "sup16_multilingual_summary.json"
+    json_path = OUTPUT_DIR / "sup15_multilingual_summary.json"
     with open(json_path, 'w') as f:
         json.dump(summary, f, indent=2)
     print(f"\n✅ Summary saved: {json_path}")
@@ -248,7 +248,7 @@ def run_sup16():
 
 
 def main():
-    run_sup16()
+    run_sup15()
 
 
 if __name__ == "__main__":
