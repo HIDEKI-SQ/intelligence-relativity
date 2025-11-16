@@ -1,4 +1,4 @@
-name: E8 Complete Experiment Suite
+name: Complete Experiment Suite
 
 on:
   workflow_dispatch:
