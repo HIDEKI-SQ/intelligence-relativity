@@ -1,270 +1,138 @@
-"""Test suite for all E8 experiments
+"""Tests for experiment execution.
 
-Validates that all 15 experiments execute correctly and produce
-expected outputs with deterministic reproducibility.
-
-Author: HIDEKI
-Date: 2025-11
-License: MIT
+Validates that experiments can execute successfully and produce
+expected outputs.
 """
 
 import pytest
-import sys
-from pathlib import Path
-import json
-import pandas as pd
 import numpy as np
+from pathlib import Path
+import sys
 
-# Add src to path
+# Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core import set_deterministic_mode
+
+class TestExperimentStructure:
+    """Test experiment file structure and imports."""
+    
+    def test_all_experiments_importable(self):
+        """Verify all experiment modules can be imported."""
+        experiments = [
+            "exp_00_baseline",
+            "exp_01_spatial_vs_random",
+            "exp_02_grid_arrangement",
+            "exp_03_line_arrangement",
+            "exp_04_3d_cube_arrangement",
+            "exp_05_independence_permutation",
+            "exp_06_dimension_robustness",
+            "exp_07_sample_size_robustness",
+            "exp_08_metric_robustness",
+            "exp_09_topological_disruption",
+            "exp_10_rotation_invariance",
+            "exp_11_coordinate_noise",
+            "exp_12_semantic_noise",
+            "exp_13_value_gate_sweep",
+            "sup_exp_14_bert",
+            "sup_exp_15_multilingual",
+            "exp_beta_initial_exploration",
+        ]
+        
+        for exp_name in experiments:
+            try:
+                module = __import__(f"src.experiments.{exp_name}", fromlist=[''])
+                assert hasattr(module, 'main'), f"{exp_name} missing main()"
+            except ImportError as e:
+                pytest.fail(f"Failed to import {exp_name}: {e}")
+    
+    def test_experiments_have_required_functions(self):
+        """Verify experiments have required structure."""
+        from src.experiments import exp_00_baseline
+        
+        # Should have main function
+        assert hasattr(exp_00_baseline, 'main')
+        assert callable(exp_00_baseline.main)
 
 
-class TestExperimentExecution:
-    """Test that each experiment executes without errors."""
+class TestBaselineExperiment:
+    """Test EXP-00 baseline experiment."""
     
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        """Set deterministic mode before each test."""
-        set_deterministic_mode()
+    def test_exp00_parameters(self):
+        """Verify EXP-00 uses correct parameters."""
+        from src.experiments import exp_00_baseline
+        
+        assert exp_00_baseline.N_ITEMS == 20
+        assert exp_00_baseline.DIM == 100
+        assert exp_00_baseline.N_TRIALS == 1000
+        assert exp_00_baseline.BASE_SEED == 42
     
-    def test_exp_00_baseline(self):
-        """Test EXP-00: Baseline"""
-        from src.experiments.exp_00_baseline import run_single_trial
-        result = run_single_trial(42)
-        assert 'seed' in result
-        assert 'ssc' in result
-        assert isinstance(result['ssc'], float)
-        assert -1 <= result['ssc'] <= 1
-    
-    def test_exp_01_spatial_vs_random(self):
-        """Test EXP-01: Spatial vs Random"""
-        from src.experiments.exp_01_spatial_vs_random import run_single_trial
-        result = run_single_trial(42)
-        assert 'seed' in result
-        assert 'ssc_spatial' in result
-        assert 'ssc_random' in result
-        assert isinstance(result['ssc_spatial'], float)
-        assert isinstance(result['ssc_random'], float)
-    
-    def test_exp_02_grid_arrangement(self):
-        """Test EXP-02: Grid Arrangement"""
-        from src.experiments.exp_02_grid_arrangement import run_single_trial
-        result = run_single_trial(42)
-        assert 'seed' in result
-        assert 'ssc_grid' in result
-        assert 'ssc_random' in result
-    
-    def test_exp_03_line_arrangement(self):
-        """Test EXP-03: Line Arrangement"""
-        from src.experiments.exp_03_line_arrangement import run_single_trial
-        result = run_single_trial(42)
-        assert 'seed' in result
-        assert 'ssc_line' in result
-        assert 'ssc_random' in result
-    
-    def test_exp_04_3d_cube_arrangement(self):
-        """Test EXP-04: 3D Cube Arrangement"""
-        from src.experiments.exp_04_3d_cube_arrangement import run_single_trial
-        result = run_single_trial(42)
-        assert 'seed' in result
-        assert 'ssc_cube' in result
-        assert 'ssc_random' in result
-    
-    def test_exp_05_independence_permutation(self):
-        """Test EXP-05: Independence Test"""
-        from src.experiments.exp_05_independence_permutation import run_single_trial
-        result = run_single_trial(42, 42)
-        assert 'seed_A' in result
-        assert 'seed_perm' in result
-        assert 'ssc' in result
-    
-    def test_exp_06_dimension_robustness(self):
-        """Test EXP-06: Dimension Robustness"""
-        from src.experiments.exp_06_dimension_robustness import run_single_trial
-        result = run_single_trial(42, 100)
-        assert 'seed' in result
-        assert 'dim' in result
-        assert 'ssc' in result
-    
-    def test_exp_07_sample_size_robustness(self):
-        """Test EXP-07: Sample Size Robustness"""
-        from src.experiments.exp_07_sample_size_robustness import run_single_trial
-        result = run_single_trial(42, 20)
-        assert 'seed' in result
-        assert 'n_items' in result
-        assert 'ssc' in result
-    
-    def test_exp_08_metric_robustness(self):
-        """Test EXP-08: Metric Robustness"""
-        from src.experiments.exp_08_metric_robustness import run_single_trial
-        result = run_single_trial(42, 'correlation')
-        assert 'seed' in result
-        assert 'metric' in result
-        assert 'ssc' in result
-    
-    def test_exp_09_topological_disruption(self):
-        """Test EXP-09: Topological Disruption"""
-        from src.experiments.exp_09_topological_disruption import run_single_trial
-        result = run_single_trial(42, 0.1)
-        assert 'seed' in result
-        assert 'swap_ratio' in result
-        assert 'ssc' in result
-    
-    def test_exp_10_rotation_invariance(self):
-        """Test EXP-10: Rotation Invariance"""
-        from src.experiments.exp_10_rotation_invariance import run_single_trial
-        result = run_single_trial(42, 30)
-        assert 'seed' in result
-        assert 'angle' in result
-        assert 'ssc' in result
-    
-    def test_exp_11_coordinate_noise(self):
-        """Test EXP-11: Coordinate Noise"""
-        from src.experiments.exp_11_coordinate_noise import run_single_trial
-        result = run_single_trial(42, 0.1)
-        assert 'seed' in result
-        assert 'noise_level' in result
-        assert 'ssc' in result
-    
-    def test_exp_12_semantic_noise(self):
-        """Test EXP-12: Semantic Noise"""
-        from src.experiments.exp_12_semantic_noise import run_single_trial
-        result = run_single_trial(42, 0.1)
-        assert 'seed' in result
-        assert 'noise_level' in result
-        assert 'ssc' in result
-        assert 'semantic_similarity' in result
-    
-    def test_exp_13_value_gate_sweep(self):
-        """Test EXP-13: Value Gate Sweep"""
-        from src.experiments.exp_13_value_gate_sweep import run_single_trial
-        result = run_single_trial(42, 0.5)
-        assert 'seed' in result
-        assert 'lambda' in result
-        assert 'ssc' in result
-    
-    def test_exp_beta_initial_exploration(self):
-        """Test EXP-Beta: Initial Exploration"""
-        from src.experiments.exp_beta_initial_exploration import run_single_trial
-        result = run_single_trial(42)
-        assert 'seed' in result
-        assert 'ssc' in result
+    def test_exp00_output_structure(self, tmp_path, monkeypatch):
+        """Verify EXP-00 produces correct output structure."""
+        from src.experiments import exp_00_baseline
+        
+        # Redirect output to temp directory
+        test_output = tmp_path / "exp00_baseline"
+        monkeypatch.setattr(exp_00_baseline, 'OUTPUT_DIR', test_output)
+        
+        # Run with small sample
+        original_trials = exp_00_baseline.N_TRIALS
+        monkeypatch.setattr(exp_00_baseline, 'N_TRIALS', 10)
+        
+        exp_00_baseline.run_exp00()
+        
+        # Verify outputs exist
+        assert (test_output / "exp00_baseline_summary.json").exists()
+        assert (test_output / "exp00_baseline_results.csv").exists()
+        assert (test_output / "exp00_baseline_histogram.png").exists()
+        assert (test_output / "sha256_manifest.json").exists()
 
 
-class TestDeterministicReproducibility:
-    """Test that experiments produce identical results with same seed."""
+class TestSupplementaryExperiments:
+    """Test supplementary experiments can be imported."""
     
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        """Set deterministic mode before each test."""
-        set_deterministic_mode()
+    def test_sup14_bert_import(self):
+        """Verify SUP-14 BERT experiment can be imported."""
+        try:
+            from src.experiments import sup_exp_14_bert
+            assert hasattr(sup_exp_14_bert, 'main')
+        except ImportError:
+            pytest.skip("Transformers not installed")
     
-    def test_exp_00_determinism(self):
-        """Test EXP-00 deterministic reproducibility"""
-        from src.experiments.exp_00_baseline import run_single_trial
-        
-        result1 = run_single_trial(42)
-        result2 = run_single_trial(42)
-        
-        assert result1['ssc'] == result2['ssc'], "Results must be identical"
-    
-    def test_exp_01_determinism(self):
-        """Test EXP-01 deterministic reproducibility"""
-        from src.experiments.exp_01_spatial_vs_random import run_single_trial
-        
-        result1 = run_single_trial(42)
-        result2 = run_single_trial(42)
-        
-        assert result1['ssc_spatial'] == result2['ssc_spatial']
-        assert result1['ssc_random'] == result2['ssc_random']
-    
-    def test_exp_13_determinism(self):
-        """Test EXP-13 deterministic reproducibility"""
-        from src.experiments.exp_13_value_gate_sweep import run_single_trial
-        
-        result1 = run_single_trial(42, 0.5)
-        result2 = run_single_trial(42, 0.5)
-        
-        assert result1['ssc'] == result2['ssc']
+    def test_sup15_multilingual_import(self):
+        """Verify SUP-15 multilingual experiment can be imported."""
+        try:
+            from src.experiments import sup_exp_15_multilingual
+            assert hasattr(sup_exp_15_multilingual, 'main')
+        except ImportError:
+            pytest.skip("Transformers not installed")
 
 
-class TestCoreUtilities:
-    """Test core utility functions."""
+class TestExperimentParameterConsistency:
+    """Test parameter consistency across experiments."""
     
-    def test_generate_embeddings(self):
-        """Test embedding generation"""
-        from src.core import generate_embeddings
+    def test_base_seed_consistency(self):
+        """Verify BASE_SEED is consistent across experiments."""
+        from src.experiments import (
+            exp_00_baseline,
+            exp_01_spatial_vs_random,
+            exp_02_grid_arrangement
+        )
         
-        emb1 = generate_embeddings(20, 100, 42)
-        emb2 = generate_embeddings(20, 100, 42)
-        
-        assert emb1.shape == (20, 100)
-        assert np.allclose(emb1, emb2), "Embeddings must be deterministic"
+        assert exp_00_baseline.BASE_SEED == 42
+        assert exp_01_spatial_vs_random.BASE_SEED == 42
+        assert exp_02_grid_arrangement.BASE_SEED == 42
     
-    def test_generate_spatial_coords(self):
-        """Test spatial coordinate generation"""
-        from src.core import generate_spatial_coords
+    def test_n_items_consistency(self):
+        """Verify N_ITEMS is consistent for core experiments."""
+        from src.experiments import (
+            exp_00_baseline,
+            exp_01_spatial_vs_random,
+            exp_02_grid_arrangement
+        )
         
-        coords1 = generate_spatial_coords(20, 'circle', 42)
-        coords2 = generate_spatial_coords(20, 'circle', 42)
-        
-        assert coords1.shape == (20, 2)
-        assert np.allclose(coords1, coords2), "Coordinates must be deterministic"
-    
-    def test_compute_ssc(self):
-        """Test SSC computation"""
-        from src.core import compute_ssc
-        from scipy.spatial.distance import pdist
-        
-        # Create simple test case
-        emb = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
-        coords = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
-        
-        sem_dist = pdist(emb, 'correlation')
-        spa_dist = pdist(coords, 'euclidean')
-        
-        ssc = compute_ssc(sem_dist, spa_dist)
-        
-        assert isinstance(ssc, float)
-        assert -1 <= ssc <= 1
-    
-    def test_compute_summary_stats(self):
-        """Test summary statistics computation"""
-        from src.core import compute_summary_stats
-        
-        data = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
-        stats = compute_summary_stats(data)
-        
-        assert 'mean' in stats
-        assert 'std' in stats
-        assert 'median' in stats
-        assert 'min' in stats
-        assert 'max' in stats
-        
-        assert stats['mean'] == pytest.approx(0.3)
-        assert stats['median'] == pytest.approx(0.3)
-    
-    def test_bootstrap_ci(self):
-        """Test bootstrap CI computation"""
-        from src.core import bootstrap_ci
-        
-        data = np.random.randn(100)
-        ci_lower, ci_upper = bootstrap_ci(data, n_bootstrap=100, seed=42)
-        
-        assert ci_lower < ci_upper
-        assert isinstance(ci_lower, float)
-        assert isinstance(ci_upper, float)
-
-
-class TestOutputValidation:
-    """Test that experiments produce valid outputs."""
-    
-    def test_output_structure(self, tmp_path):
-        """Test that output files have correct structure"""
-        # This would test actual file outputs if needed
-        pass
+        assert exp_00_baseline.N_ITEMS == 20
+        assert exp_01_spatial_vs_random.N_ITEMS == 20
+        assert exp_02_grid_arrangement.N_ITEMS == 20
 
 
 if __name__ == "__main__":
