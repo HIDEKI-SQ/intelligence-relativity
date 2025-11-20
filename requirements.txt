@@ -1,21 +1,57 @@
-# E8 Series - Intelligence Relativity
-# Core dependencies for experiments
+# Intelligence Relativity - Requirements
+# Version: 1.1.1 (Deterministic Reproducibility Standard)
+# Compatible with: O-1 Natural Orthogonality Study
+# Python: 3.10.12
 
-# Core scientific computing
-numpy>=1.24.0
-scipy>=1.10.0
-pandas>=2.0.0
+# =============================================================================
+# CORE SCIENTIFIC COMPUTING (Deterministic - Exact Versions)
+# =============================================================================
+numpy==1.24.3
+scipy==1.10.1
+pandas==2.0.3
 
-# Visualization
-matplotlib>=3.7.0
+# =============================================================================
+# VISUALIZATION
+# =============================================================================
+matplotlib==3.7.2
 
-# Statistical analysis
-scikit-learn>=1.3.0
+# =============================================================================
+# STATISTICAL ANALYSIS
+# =============================================================================
+scikit-learn==1.3.0
 
-# Development dependencies (optional for CI)
-pytest>=7.4.0
-pytest-cov>=4.1.0
+# =============================================================================
+# TESTING & CI (Development)
+# =============================================================================
+pytest==7.4.0
+pytest-cov==4.1.0
 
-# SUPPLIMENT EXPERIMENTS
-transformers>=4.30.0
-torch>=2.0.0
+# =============================================================================
+# SUPPLEMENTARY EXPERIMENTS (Multilingual BERT Validation)
+# =============================================================================
+# Note: Deep learning frameworks allow broader compatibility
+# as they do not affect core SSC computation determinism
+transformers>=4.30.0,<5.0.0
+torch>=2.0.0,<3.0.0
+
+# =============================================================================
+# NOTES ON REPRODUCIBILITY
+# =============================================================================
+# Core dependencies (numpy, scipy, pandas, matplotlib, scikit-learn) are
+# pinned to exact versions to ensure bit-for-bit reproducibility of:
+#   - SSC computation (Spearman correlation)
+#   - Statistical analyses (bootstrap CI, TOST)
+#   - Figure generation
+#
+# Supplementary dependencies (transformers, torch) allow version ranges
+# as they are used only for pretrained embedding extraction (Section 3.4)
+# and do not affect the deterministic SSC measurement pipeline.
+#
+# To reproduce exact results:
+#   pip install -r requirements.txt
+#   python -m pytest tests/ --verbose
+#
+# CI Configuration:
+#   - Single-threaded BLAS: OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+#   - Floating-point precision: float64 (IEEE-754)
+#   - Random seed management: Deterministic streams (see Methods 2.1)
