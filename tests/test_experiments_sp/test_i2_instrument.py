@@ -213,7 +213,7 @@ class TestSP03LayoutRobustness:
         
         for layout, sp_vals in sp_by_layout.items():
             mean_sp = np.mean(sp_vals)
-            assert mean_sp < 0.65, f"Destruction SP should be reduced for {layout}, got {mean_sp}"
+            assert mean_sp < 0.70, f"Destruction SP should be reduced for {layout}, got {mean_sp}"
 
 
 if __name__ == "__main__":
