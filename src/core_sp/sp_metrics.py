@@ -74,6 +74,11 @@ def jaccard_similarity_bool(a: np.ndarray, b: np.ndarray) -> float:
     """
     a = a.astype(bool)
     b = b.astype(bool)
+    
+    # Shape validation
+    if a.shape != b.shape:
+        raise ValueError(f"Shape mismatch: a.shape={a.shape}, b.shape={b.shape}")
+    
     inter = np.logical_and(a, b).sum()
     union = np.logical_or(a, b).sum()
     if union == 0:
@@ -103,6 +108,16 @@ def compute_sp_adj(
     float
         Jaccard similarity between k-NN graphs in [0, 1].
     """
+    # Shape validation
+    base_coords = np.asarray(base_coords, dtype=float)
+    trans_coords = np.asarray(trans_coords, dtype=float)
+    
+    if base_coords.shape[0] != trans_coords.shape[0]:
+        raise ValueError(
+            f"Number of items must match: "
+            f"base={base_coords.shape[0]}, trans={trans_coords.shape[0]}"
+        )
+    
     adj_base = compute_knn_graph(base_coords, k=k)
     adj_trans = compute_knn_graph(trans_coords, k=k)
     return jaccard_similarity_bool(adj_base, adj_trans)
