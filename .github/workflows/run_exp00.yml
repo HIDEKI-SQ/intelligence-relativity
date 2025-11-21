@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'src/experiments/exp_00_random_baseline.py'
+      - 'src/experiments/exp_00_baseline.py'
       - 'src/core/**'
 
 jobs:
@@ -22,10 +22,10 @@ jobs:
       run: pip install numpy scipy pandas matplotlib
     
     - name: Run EXP-00
-      run: python src/experiments/exp_00_random_baseline.py
+      run: python src/experiments/exp_00_baseline.py
     
     - name: Upload results
       uses: actions/upload-artifact@v4
       with:
         name: exp00-results
-        path: outputs/exp00_random_baseline/
+        path: outputs/exp00_baseline/
