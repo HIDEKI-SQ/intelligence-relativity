@@ -38,18 +38,29 @@ class TestSP40DimNRobustness:
         assert output_file.exists()
     
     def test_sp40_pattern_consistent(self, temp_output_dir):
-        """Test: SP values in valid range across different N."""
+        """Test: Topology < Metric pattern holds across N (realistic margin)."""
         out_dir = temp_output_dir / "sp40"
         run_sp40_dimN_sp_robustness(n_trials=10, seed=800, out_dir=out_dir)
         
         with open(out_dir / "sp40_dimN_sp_robustness_raw.json") as f:
             data = json.load(f)
         
-        # Check that all SP values are in [0, 1] and finite
+        # Group by n_items
+        results = {}
         for record in data["records"]:
-            sp = record["sp"]
-            assert 0.0 <= sp <= 1.0, f"SP out of range for N={record['n_items']}: {sp}"
-            assert np.isfinite(sp), f"SP not finite for N={record['n_items']}"
+            n = record["n_items"]
+            if n not in results:
+                results[n] = {"topology": [], "metric": []}
+            results[n]["topology"].append(record["sp_topology"])
+            results[n]["metric"].append(record["sp_metric"])
+        
+        # Check pattern for each N: metric > topology
+        for n in results.keys():
+            mean_metric = np.mean(results[n]["metric"])
+            mean_topo = np.mean(results[n]["topology"])
+            
+            assert mean_metric > mean_topo + 0.10, \
+                f"Pattern not consistent for N={n}: metric={mean_metric}, topo={mean_topo}"
 
 
 class TestSP41LayoutTopologyRobustness:
