@@ -17,10 +17,14 @@ on:
           - all      # All experiments (WARNING: long runtime)
       
       n_trials:
-        description: 'Number of trials (reduce for faster testing)'
+        description: 'Number of trials per experiment'
         required: false
         default: '100'
-        type: string
+        type: choice
+        options:
+          - '10'
+          - '100'
+          - '1000'
 
 jobs:
   run-experiments:
@@ -51,37 +55,77 @@ jobs:
     - name: Run I-2 experiments
       if: inputs.experiment_set == 'i2' || inputs.experiment_set == 'all'
       run: |
-        python -m src.experiments_sp.i2_sp_instrument.sp00_identity_isometry
-        python -m src.experiments_sp.i2_sp_instrument.sp01_full_destruction
-        python -m src.experiments_sp.i2_sp_instrument.sp02_topology_rewire_curve
-        python -m src.experiments_sp.i2_sp_instrument.sp03_layout_robustness
+        python -c "
+        from src.experiments_sp.i2_sp_instrument.sp00_identity_isometry import run_sp00_identity_isometry
+        from src.experiments_sp.i2_sp_instrument.sp01_full_destruction import run_sp01_full_destruction
+        from src.experiments_sp.i2_sp_instrument.sp02_topology_rewire_curve import run_sp02_topology_rewire_curve
+        from src.experiments_sp.i2_sp_instrument.sp03_layout_robustness import run_sp03_layout_robustness
+        n_trials = ${{ inputs.n_trials }}
+        print(f'Running I-2 experiments with n_trials={n_trials}')
+        run_sp00_identity_isometry(n_trials=n_trials)
+        run_sp01_full_destruction(n_trials=n_trials)
+        run_sp02_topology_rewire_curve(n_trials=n_trials)
+        run_sp03_layout_robustness(n_trials=n_trials)
+        "
     
     - name: Run O-2 experiments
       if: inputs.experiment_set == 'o2' || inputs.experiment_set == 'all'
       run: |
-        python -m src.experiments_sp.o2_topological_dominance_sp.sp10_metric_invariance
-        python -m src.experiments_sp.o2_topological_dominance_sp.sp11_topology_sensitivity
-        python -m src.experiments_sp.o2_topological_dominance_sp.sp12_topology_vs_metric
-        python -m src.experiments_sp.o2_topological_dominance_sp.sp13_layout_generalization
+        python -c "
+        from src.experiments_sp.o2_topological_dominance_sp.sp10_metric_invariance import run_sp10_metric_invariance
+        from src.experiments_sp.o2_topological_dominance_sp.sp11_topology_sensitivity import run_sp11_topology_sensitivity
+        from src.experiments_sp.o2_topological_dominance_sp.sp12_topology_vs_metric import run_sp12_topology_vs_metric
+        from src.experiments_sp.o2_topological_dominance_sp.sp13_layout_generalization import run_sp13_layout_generalization
+        n_trials = ${{ inputs.n_trials }}
+        print(f'Running O-2 experiments with n_trials={n_trials}')
+        run_sp10_metric_invariance(n_trials=n_trials)
+        run_sp11_topology_sensitivity(n_trials=n_trials)
+        run_sp12_topology_vs_metric(n_trials=n_trials)
+        run_sp13_layout_generalization(n_trials=n_trials)
+        "
     
     - name: Run O-3 experiments
       if: inputs.experiment_set == 'o3' || inputs.experiment_set == 'all'
       run: |
-        python -m src.experiments_sp.o3_stress_independence_sp_ssc.sp20_coord_noise_sp_ssc
-        python -m src.experiments_sp.o3_stress_independence_sp_ssc.sp21_semantic_noise_sp_ssc
-        python -m src.experiments_sp.o3_stress_independence_sp_ssc.sp22_mixed_noise_grid
+        python -c "
+        from src.experiments_sp.o3_stress_independence_sp_ssc.sp20_coord_noise_sp_ssc import run_sp20_coord_noise_sp_ssc
+        from src.experiments_sp.o3_stress_independence_sp_ssc.sp21_semantic_noise_sp_ssc import run_sp21_semantic_noise_sp_ssc
+        from src.experiments_sp.o3_stress_independence_sp_ssc.sp22_mixed_noise_grid import run_sp22_mixed_noise_grid
+        n_trials = ${{ inputs.n_trials }}
+        print(f'Running O-3 experiments with n_trials={n_trials}')
+        run_sp20_coord_noise_sp_ssc(n_trials=n_trials)
+        run_sp21_semantic_noise_sp_ssc(n_trials=n_trials)
+        run_sp22_mixed_noise_grid(n_trials=n_trials)
+        "
     
     - name: Run O-4 experiments (synthetic only)
       if: inputs.experiment_set == 'o4_synth' || inputs.experiment_set == 'all'
       run: |
-        python -m src.experiments_sp.o4_value_gate_tradeoff_sp.sp30_lambda_sweep_synth
+        python -c "
+        from src.experiments_sp.o4_value_gate_tradeoff_sp.sp30_lambda_sweep_synth import run_sp30_lambda_sweep_synth
+        n_trials = ${{ inputs.n_trials }}
+        print(f'Running O-4 experiments with n_trials={n_trials}')
+        run_sp30_lambda_sweep_synth(n_trials=n_trials)
+        "
     
     - name: Run Robustness experiments
       if: inputs.experiment_set == 'robust' || inputs.experiment_set == 'all'
       run: |
-        python -m src.experiments_sp.sp_robustness.sp40_dimN_sp_robustness
-        python -m src.experiments_sp.sp_robustness.sp41_layout_topology_sp_robustness
-        python -m src.experiments_sp.sp_robustness.sp42_knn_k_robustness
+        python -c "
+        from src.experiments_sp.sp_robustness.sp40_dimN_sp_robustness import run_sp40_dimN_sp_robustness
+        from src.experiments_sp.sp_robustness.sp41_layout_topology_sp_robustness import run_sp41_layout_topology_sp_robustness
+        from src.experiments_sp.sp_robustness.sp42_knn_k_robustness import run_sp42_knn_k_robustness
+        n_trials = ${{ inputs.n_trials }}
+        print(f'Running Robustness experiments with n_trials={n_trials}')
+        run_sp40_dimN_sp_robustness(n_trials=n_trials)
+        run_sp41_layout_topology_sp_robustness(n_trials=n_trials)
+        run_sp42_knn_k_robustness(n_trials=n_trials)
+        "
+    
+    - name: Generate Overall Summary
+      if: always()
+      run: |
+        python -m src.experiments_sp.generate_overall_summary
     
     - name: Upload experiment outputs
       if: always()
@@ -96,8 +140,15 @@ jobs:
       run: |
         echo "## Experiment Results (${{ inputs.experiment_set }})" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "📁 Output files created:" >> $GITHUB_STEP_SUMMARY
-        find outputs_sp/ -name "*.json" | wc -l >> $GITHUB_STEP_SUMMARY
+        echo "### Parameters" >> $GITHUB_STEP_SUMMARY
+        echo "- n_trials: ${{ inputs.n_trials }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "📊 File list:" >> $GITHUB_STEP_SUMMARY
-        find outputs_sp/ -name "*.json" >> $GITHUB_STEP_SUMMARY
+        echo "### Output Files" >> $GITHUB_STEP_SUMMARY
+        echo "📁 Total JSON files: $(find outputs_sp/ -name '*.json' | wc -l)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ -f outputs_sp/overall_summary.json ]; then
+          echo "### Overall Summary" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat outputs_sp/overall_summary.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        fi
