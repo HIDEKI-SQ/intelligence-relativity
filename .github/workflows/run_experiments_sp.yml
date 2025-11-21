@@ -1,0 +1,103 @@
+name: Run SP Experiments (v2.0.0)
+
+on:
+  workflow_dispatch:  # 手動実行専用
+    inputs:
+      experiment_set:
+        description: 'Experiment set to run'
+        required: true
+        default: 'i2'
+        type: choice
+        options:
+          - i2       # I-2: Instrument validation (4 experiments)
+          - o2       # O-2: Topological dominance (4 experiments)
+          - o3       # O-3: SP-SSC independence (3 experiments)
+          - o4_synth # O-4: Value gate (synthetic only, 1 experiment)
+          - robust   # Robustness (3 experiments)
+          - all      # All experiments (WARNING: long runtime)
+      
+      n_trials:
+        description: 'Number of trials (reduce for faster testing)'
+        required: false
+        default: '100'
+        type: string
+
+jobs:
+  run-experiments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120  # 2時間制限
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Set environment for determinism
+      run: |
+        echo "OPENBLAS_NUM_THREADS=1" >> $GITHUB_ENV
+        echo "MKL_NUM_THREADS=1" >> $GITHUB_ENV
+        echo "NUMEXPR_NUM_THREADS=1" >> $GITHUB_ENV
+        echo "OMP_NUM_THREADS=1" >> $GITHUB_ENV
+    
+    - name: Run I-2 experiments
+      if: inputs.experiment_set == 'i2' || inputs.experiment_set == 'all'
+      run: |
+        python -m src.experiments_sp.i2_sp_instrument.sp00_identity_isometry
+        python -m src.experiments_sp.i2_sp_instrument.sp01_full_destruction
+        python -m src.experiments_sp.i2_sp_instrument.sp02_topology_rewire_curve
+        python -m src.experiments_sp.i2_sp_instrument.sp03_layout_robustness
+    
+    - name: Run O-2 experiments
+      if: inputs.experiment_set == 'o2' || inputs.experiment_set == 'all'
+      run: |
+        python -m src.experiments_sp.o2_topological_dominance_sp.sp10_metric_invariance
+        python -m src.experiments_sp.o2_topological_dominance_sp.sp11_topology_sensitivity
+        python -m src.experiments_sp.o2_topological_dominance_sp.sp12_topology_vs_metric
+        python -m src.experiments_sp.o2_topological_dominance_sp.sp13_layout_generalization
+    
+    - name: Run O-3 experiments
+      if: inputs.experiment_set == 'o3' || inputs.experiment_set == 'all'
+      run: |
+        python -m src.experiments_sp.o3_stress_independence_sp_ssc.sp20_coord_noise_sp_ssc
+        python -m src.experiments_sp.o3_stress_independence_sp_ssc.sp21_semantic_noise_sp_ssc
+        python -m src.experiments_sp.o3_stress_independence_sp_ssc.sp22_mixed_noise_grid
+    
+    - name: Run O-4 experiments (synthetic only)
+      if: inputs.experiment_set == 'o4_synth' || inputs.experiment_set == 'all'
+      run: |
+        python -m src.experiments_sp.o4_value_gate_tradeoff_sp.sp30_lambda_sweep_synth
+    
+    - name: Run Robustness experiments
+      if: inputs.experiment_set == 'robust' || inputs.experiment_set == 'all'
+      run: |
+        python -m src.experiments_sp.sp_robustness.sp40_dimN_sp_robustness
+        python -m src.experiments_sp.sp_robustness.sp41_layout_topology_sp_robustness
+        python -m src.experiments_sp.sp_robustness.sp42_knn_k_robustness
+    
+    - name: Upload experiment outputs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: experiment-outputs-${{ inputs.experiment_set }}
+        path: outputs_sp/
+        retention-days: 30
+    
+    - name: Generate experiment summary
+      if: always()
+      run: |
+        echo "## Experiment Results (${{ inputs.experiment_set }})" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📁 Output files created:" >> $GITHUB_STEP_SUMMARY
+        find outputs_sp/ -name "*.json" | wc -l >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📊 File list:" >> $GITHUB_STEP_SUMMARY
+        find outputs_sp/ -name "*.json" >> $GITHUB_STEP_SUMMARY
