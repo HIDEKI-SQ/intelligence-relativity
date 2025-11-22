@@ -31,18 +31,19 @@ class TestSP40DimNRobustness:
     
     def test_sp40_runs(self, temp_output_dir):
         """Test: SP-40 runs without errors."""
-        out_dir = temp_output_dir / "sp40"
+        out_dir = temp_output_dir / "sp40_dimN_sp_robustness"
         run_sp40_dimN_sp_robustness(n_trials=5, seed=800, out_dir=out_dir)
         
-        output_file = out_dir / "sp40_dimN_sp_robustness_raw.json"
+        # New naming convention: {id}_raw.json
+        output_file = out_dir / "sp40_raw.json"
         assert output_file.exists()
     
     def test_sp40_pattern_consistent(self, temp_output_dir):
         """Test: Topology < Metric pattern holds across N (realistic margin)."""
-        out_dir = temp_output_dir / "sp40"
+        out_dir = temp_output_dir / "sp40_dimN_sp_robustness"
         run_sp40_dimN_sp_robustness(n_trials=10, seed=800, out_dir=out_dir)
         
-        with open(out_dir / "sp40_dimN_sp_robustness_raw.json") as f:
+        with open(out_dir / "sp40_raw.json") as f:
             data = json.load(f)
         
         # Group by n_items
@@ -68,15 +69,16 @@ class TestSP41LayoutTopologyRobustness:
     
     def test_sp41_runs(self, temp_output_dir):
         """Test: SP-41 runs without errors."""
-        out_dir = temp_output_dir / "sp41"
+        out_dir = temp_output_dir / "sp41_layout_topology_sp_robustness"
         run_sp41_layout_topology_sp_robustness(n_trials=5, seed=801, out_dir=out_dir)
         
-        output_file = out_dir / "sp41_layout_topology_sp_robustness_raw.json"
+        # New naming convention: {id}_raw.json
+        output_file = out_dir / "sp41_raw.json"
         assert output_file.exists()
     
     def test_sp41_monotonic_decrease(self, temp_output_dir):
         """Test: p↑ → SP↓ across layouts."""
-        out_dir = temp_output_dir / "sp41"
+        out_dir = temp_output_dir / "sp41_layout_topology_sp_robustness"
         run_sp41_layout_topology_sp_robustness(
             n_trials=10,
             seed=801,
@@ -84,7 +86,7 @@ class TestSP41LayoutTopologyRobustness:
             out_dir=out_dir
         )
         
-        with open(out_dir / "sp41_layout_topology_sp_robustness_raw.json") as f:
+        with open(out_dir / "sp41_raw.json") as f:
             data = json.load(f)
         
         # Group by (layout, p)
@@ -111,18 +113,19 @@ class TestSP42KNNKRobustness:
     
     def test_sp42_runs(self, temp_output_dir):
         """Test: SP-42 runs without errors."""
-        out_dir = temp_output_dir / "sp42"
+        out_dir = temp_output_dir / "sp42_knn_k_robustness"
         run_sp42_knn_k_robustness(n_trials=5, seed=802, out_dir=out_dir)
         
-        output_file = out_dir / "sp42_knn_k_robustness_raw.json"
+        # New naming convention: {id}_raw.json
+        output_file = out_dir / "sp42_raw.json"
         assert output_file.exists()
     
     def test_sp42_sp_range(self, temp_output_dir):
         """Test: SP in [0, 1] for all k."""
-        out_dir = temp_output_dir / "sp42"
+        out_dir = temp_output_dir / "sp42_knn_k_robustness"
         run_sp42_knn_k_robustness(n_trials=10, seed=802, out_dir=out_dir)
         
-        with open(out_dir / "sp42_knn_k_robustness_raw.json") as f:
+        with open(out_dir / "sp42_raw.json") as f:
             data = json.load(f)
         
         for record in data["records"]:
