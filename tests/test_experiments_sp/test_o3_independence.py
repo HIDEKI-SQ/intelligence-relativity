@@ -32,23 +32,24 @@ class TestSP20CoordNoise:
     
     def test_sp20_runs(self, temp_output_dir):
         """Test: SP-20 runs without errors."""
-        out_dir = temp_output_dir / "sp20"
+        out_dir = temp_output_dir / "sp20_coord_noise_sp_ssc"
         run_sp20_coord_noise_sp_ssc(n_trials=5, seed=500, out_dir=out_dir)
         
-        output_file = out_dir / "sp20_coord_noise_sp_ssc_raw.json"
+        # New naming convention: {id}_raw.json
+        output_file = out_dir / "sp20_raw.json"
         assert output_file.exists()
     
     def test_sp20_ssc_near_zero(self, temp_output_dir):
         """Test: SSC ≈ 0 at λ=0 (O-1)."""
-        out_dir = temp_output_dir / "sp20"
+        out_dir = temp_output_dir / "sp20_coord_noise_sp_ssc"
         run_sp20_coord_noise_sp_ssc(
             n_trials=20,
             seed=500,
-            sigmas=(0.0, 0.3),
+            sigma_coord_values=(0.0, 0.3),
             out_dir=out_dir
         )
         
-        with open(out_dir / "sp20_coord_noise_sp_ssc_raw.json") as f:
+        with open(out_dir / "sp20_raw.json") as f:
             data = json.load(f)
         
         ssc_vals = [r["ssc"] for r in data["records"]]
@@ -58,15 +59,15 @@ class TestSP20CoordNoise:
     
     def test_sp20_sp_decreases_with_noise(self, temp_output_dir):
         """Test: σ↑ → SP↓."""
-        out_dir = temp_output_dir / "sp20"
+        out_dir = temp_output_dir / "sp20_coord_noise_sp_ssc"
         run_sp20_coord_noise_sp_ssc(
             n_trials=10,
             seed=500,
-            sigmas=(0.0, 0.5),
+            sigma_coord_values=(0.0, 0.5),
             out_dir=out_dir
         )
         
-        with open(out_dir / "sp20_coord_noise_sp_ssc_raw.json") as f:
+        with open(out_dir / "sp20_raw.json") as f:
             data = json.load(f)
         
         sp_by_sigma = {}
@@ -87,23 +88,23 @@ class TestSP21SemanticNoise:
     
     def test_sp21_runs(self, temp_output_dir):
         """Test: SP-21 runs without errors."""
-        out_dir = temp_output_dir / "sp21"
+        out_dir = temp_output_dir / "sp21_semantic_noise_sp_ssc"
         run_sp21_semantic_noise_sp_ssc(n_trials=5, seed=501, out_dir=out_dir)
         
-        output_file = out_dir / "sp21_semantic_noise_sp_ssc_raw.json"
+        output_file = out_dir / "sp21_raw.json"
         assert output_file.exists()
     
     def test_sp21_sp_stable(self, temp_output_dir):
         """Test: SP reasonably high (coords unchanged, realistic threshold)."""
-        out_dir = temp_output_dir / "sp21"
+        out_dir = temp_output_dir / "sp21_semantic_noise_sp_ssc"
         run_sp21_semantic_noise_sp_ssc(
             n_trials=10,
             seed=501,
-            sigmas=(0.0, 0.3, 0.5),
+            sigma_sem_values=(0.0, 0.3, 0.5),
             out_dir=out_dir
         )
         
-        with open(out_dir / "sp21_semantic_noise_sp_ssc_raw.json") as f:
+        with open(out_dir / "sp21_raw.json") as f:
             data = json.load(f)
         
         sp_vals = [r["sp"] for r in data["records"]]
@@ -117,24 +118,24 @@ class TestSP22MixedNoiseGrid:
     
     def test_sp22_runs(self, temp_output_dir):
         """Test: SP-22 runs without errors."""
-        out_dir = temp_output_dir / "sp22"
+        out_dir = temp_output_dir / "sp22_mixed_noise_grid"
         run_sp22_mixed_noise_grid(n_trials=5, seed=502, out_dir=out_dir)
         
-        output_file = out_dir / "sp22_mixed_noise_grid_raw.json"
+        output_file = out_dir / "sp22_raw.json"
         assert output_file.exists()
     
     def test_sp22_independence(self, temp_output_dir):
         """Test: SP depends on σ_coord, not σ_sem."""
-        out_dir = temp_output_dir / "sp22"
+        out_dir = temp_output_dir / "sp22_mixed_noise_grid"
         run_sp22_mixed_noise_grid(
             n_trials=10,
             seed=502,
-            sigmas_coord=(0.0, 0.3),
-            sigmas_sem=(0.0, 0.3),
+            sigma_coord_values=(0.0, 0.3),
+            sigma_sem_values=(0.0, 0.3),
             out_dir=out_dir
         )
         
-        with open(out_dir / "sp22_mixed_noise_grid_raw.json") as f:
+        with open(out_dir / "sp22_raw.json") as f:
             data = json.load(f)
         
         # Group by (σ_coord, σ_sem)
