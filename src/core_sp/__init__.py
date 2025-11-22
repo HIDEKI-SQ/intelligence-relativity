@@ -16,7 +16,7 @@ Modules:
 from .sp_metrics import compute_sp_total
 from .topology_ops import edge_rewire, permute_coords, random_relayout
 from .metric_ops import rotate_2d, scale_2d, shear_2d, add_coord_noise
-from .ssc_wrapper import compute_ssc_wrapper
+from .ssc_wrapper import compute_ssc
 from .value_gate import apply_value_gate
 from .generators import generate_semantic_embeddings, add_semantic_noise
 from .deterministic import set_deterministic_mode, verify_environment, generate_manifest
@@ -32,7 +32,7 @@ __all__ = [
     "scale_2d",
     "shear_2d",
     "add_coord_noise",
-    "compute_ssc_wrapper",
+    "compute_ssc",
     "apply_value_gate",
     "generate_semantic_embeddings",
     "add_semantic_noise",
