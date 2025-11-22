@@ -1,7 +1,11 @@
 """Generate series-specific summary files - consolidated statistics by experiment group."""
+
 import json
 from pathlib import Path
 import pandas as pd
+
+from src.core_sp.deterministic import verify_environment
+
 
 # Define experiment series with their experiment ID prefixes
 SERIES = {
@@ -12,8 +16,9 @@ SERIES = {
     "robust": ["sp40", "sp41", "sp42"]
 }
 
+
 def generate_summary_all(outputs_dir: Path = Path("outputs_sp")):
-    """Generate series-specific summary_all files.
+    """Generate series-specific summary files.
     
     Creates separate summary files for each experiment series to avoid
     sparse tables with many empty columns. Each series has similar
@@ -25,6 +30,7 @@ def generate_summary_all(outputs_dir: Path = Path("outputs_sp")):
         - summary_all_O3.csv: Stress tolerance experiments (sp20-sp22)
         - summary_all_O4.csv: Value-gating experiments (sp30-sp31)
         - summary_all_robust.csv: Robustness experiments (sp40-sp42)
+        - env.txt: Execution environment information
     """
     print(f"\n{'='*60}")
     print(f"📊 Generating series-specific summary files")
@@ -33,6 +39,11 @@ def generate_summary_all(outputs_dir: Path = Path("outputs_sp")):
     if not outputs_dir.exists():
         print(f"❌ Directory not found: {outputs_dir}")
         return
+    
+    # Generate environment file (once for all experiments)
+    env_file = outputs_dir / "env.txt"
+    verify_environment(env_file)
+    print(f"  ✅ Environment information saved: {env_file.name}\n")
     
     # Process each series
     for series_name, exp_prefixes in SERIES.items():
@@ -81,6 +92,7 @@ def generate_summary_all(outputs_dir: Path = Path("outputs_sp")):
             print(f"{'='*60}\n")
         else:
             print(f"\n⚠️  No experiments found for series: {series_name}\n")
+
 
 if __name__ == "__main__":
     generate_summary_all()
