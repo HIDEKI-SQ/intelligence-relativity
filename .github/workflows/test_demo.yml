@@ -87,9 +87,9 @@ jobs:
         output_dir.mkdir(parents=True, exist_ok=True)
         
         n_per_class = ${{ inputs.n_per_class }}
-        print(f'='*60)
-        print(f'DR Evaluation Demo (n={n_per_class} per class)')
-        print(f'='*60)
+        print('='*60)
+        print('DR Evaluation Demo (n=' + str(n_per_class) + ' per class)')
+        print('='*60)
         
         # Load data
         X, y = load_mnist_subset(n_per_class=n_per_class, random_state=42)
@@ -101,21 +101,21 @@ jobs:
         results = compute_all_metrics(X, embeddings, layout_type='cluster')
         
         # Save results
-        print(f'\n💾 Saving results...')
+        print('\n💾 Saving results...')
         results_path = output_dir / 'results.csv'
         results.to_csv(results_path, index=False, float_format='%.4f')
-        print(f'  ✅ Saved: {results_path}')
+        print('  ✅ Saved: ' + str(results_path))
         
         # Generate visualizations
-        print(f'\n📊 Generating visualizations...')
+        print('\n📊 Generating visualizations...')
         plot_comparison_bar(results, output_path=output_dir / 'comparison_bar.png')
         plot_embeddings_scatter(embeddings, labels=y, output_path=output_dir / 'embeddings_scatter.png')
         
         # Summary
-        print(f'\n{'='*60}')
-        print(f'✅ Demo completed successfully!')
-        print(f'{'='*60}')
-        print(f'\n📊 Results Summary:')
+        print('\n' + '='*60)
+        print('✅ Demo completed successfully!')
+        print('='*60)
+        print('\n📊 Results Summary:')
         print(results.to_string(index=False))
         "
     
