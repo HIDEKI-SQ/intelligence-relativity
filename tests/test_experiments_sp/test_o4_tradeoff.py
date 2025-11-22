@@ -30,23 +30,24 @@ class TestSP30LambdaSweepSynth:
     
     def test_sp30_runs(self, temp_output_dir):
         """Test: SP-30 runs without errors."""
-        out_dir = temp_output_dir / "sp30"
+        out_dir = temp_output_dir / "sp30_lambda_sweep_synth"
         run_sp30_lambda_sweep_synth(n_trials=5, seed=600, out_dir=out_dir)
         
-        output_file = out_dir / "sp30_lambda_sweep_synth_raw.json"
+        # New naming convention: {id}_raw.json
+        output_file = out_dir / "sp30_raw.json"
         assert output_file.exists()
     
     def test_sp30_ssc_increases(self, temp_output_dir):
         """Test: λ↑ → SSC↑ (overall trend)."""
-        out_dir = temp_output_dir / "sp30"
+        out_dir = temp_output_dir / "sp30_lambda_sweep_synth"
         run_sp30_lambda_sweep_synth(
             n_trials=10,
             seed=600,
-            lambdas=(0.0, 0.5, 1.0),
+            lambda_values=(0.0, 0.5, 1.0),
             out_dir=out_dir
         )
         
-        with open(out_dir / "sp30_lambda_sweep_synth_raw.json") as f:
+        with open(out_dir / "sp30_raw.json") as f:
             data = json.load(f)
         
         ssc_by_lambda = {}
@@ -64,15 +65,15 @@ class TestSP30LambdaSweepSynth:
     
     def test_sp30_sp_decreases(self, temp_output_dir):
         """Test: SP behavior with λ (may not be strictly monotonic)."""
-        out_dir = temp_output_dir / "sp30"
+        out_dir = temp_output_dir / "sp30_lambda_sweep_synth"
         run_sp30_lambda_sweep_synth(
             n_trials=10,
             seed=600,
-            lambdas=(0.0, 0.5, 1.0),
+            lambda_values=(0.0, 0.5, 1.0),
             out_dir=out_dir
         )
         
-        with open(out_dir / "sp30_lambda_sweep_synth_raw.json") as f:
+        with open(out_dir / "sp30_raw.json") as f:
             data = json.load(f)
         
         sp_by_lambda = {}
@@ -97,9 +98,9 @@ class TestSP30LambdaSweepSynth:
         run_sp30_lambda_sweep_synth(n_trials=5, seed=600, out_dir=out_dir1)
         run_sp30_lambda_sweep_synth(n_trials=5, seed=600, out_dir=out_dir2)
         
-        with open(out_dir1 / "sp30_lambda_sweep_synth_raw.json") as f:
+        with open(out_dir1 / "sp30_raw.json") as f:
             data1 = json.load(f)
-        with open(out_dir2 / "sp30_lambda_sweep_synth_raw.json") as f:
+        with open(out_dir2 / "sp30_raw.json") as f:
             data2 = json.load(f)
         
         ssc1 = [r["ssc"] for r in data1["records"]]
