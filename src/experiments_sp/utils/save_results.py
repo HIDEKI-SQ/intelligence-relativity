@@ -1,8 +1,8 @@
 """Utility functions for saving experiment results in standardized format.
 
 All SP experiments v2.0.0+ must use this module to ensure consistent output:
-- raw.json: Full trial-by-trial records
-- summary.csv: Aggregated statistics per condition
+- {experiment_id}_raw.json: Full trial-by-trial records
+- {experiment_id}_summary.csv: Aggregated statistics per condition
 
 Author: HIDEKI
 Date: 2025-11
@@ -80,7 +80,10 @@ def save_experiment_results(
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    # 1. Save raw.json
+    # Extract short ID from experiment_id (e.g., 'sp00_identity_isometry' -> 'sp00')
+    short_id = experiment_id.split('_')[0]
+    
+    # 1. Save raw.json with experiment ID prefix
     raw_data = {
         "experiment_id": experiment_id,
         "version": version,
@@ -88,16 +91,16 @@ def save_experiment_results(
         "records": records
     }
     
-    raw_path = out_dir / "raw.json"
+    raw_path = out_dir / f"{short_id}_raw.json"
     with raw_path.open("w", encoding="utf-8") as f:
         json.dump(raw_data, f, ensure_ascii=False, indent=2)
     
     raw_size_kb = raw_path.stat().st_size / 1024
-    print(f"✅ Saved raw.json: {raw_path} ({raw_size_kb:.1f} KB, {len(records)} records)")
+    print(f"✅ Saved {raw_path.name}: {raw_size_kb:.1f} KB, {len(records)} records")
     
-    # 2. Save summary.csv
-    summary_path = out_dir / "summary.csv"
+    # 2. Save summary.csv with experiment ID prefix
+    summary_path = out_dir / f"{short_id}_summary.csv"
     summary_df.to_csv(summary_path, index=False, float_format="%.4f")
     
     summary_size_kb = summary_path.stat().st_size / 1024
-    print(f"✅ Saved summary.csv: {summary_path} ({summary_size_kb:.1f} KB, {len(summary_df)} rows)")
+    print(f"✅ Saved {summary_path.name}: {summary_size_kb:.1f} KB, {len(summary_df)} rows")
