@@ -1,131 +1,155 @@
 """SP-00: Identity & Isometry Test.
-
-I-2 Instrument Validation: Verify that isometric transformations
-(rotation, uniform scaling, translation) preserve SP ≈ 1.
-
+Instrument Validation: Verify that isometric transformations
+(rotation, uniform scaling) preserve SP, demonstrating that
+SP measures topology, not geometry.
 Expected Results:
-    - Rotation: SP ≈ 1.0 across all angles
-    - Uniform scaling: SP ≈ 1.0 across all scales
-    - Identity: SP = 1.0 (perfect preservation)
-
+    - Rotation: SP invariant across angles
+    - Uniform scaling: SP invariant
+    - Identity: SP ≈ 1
 Author: HIDEKI
 Date: 2025-11
 License: MIT
 """
-
 from __future__ import annotations
-
-import json
 from pathlib import Path
 import numpy as np
+import pandas as pd
 
 from src.core_sp.sp_metrics import compute_sp_total
 from src.core_sp.metric_ops import rotate_2d, scale_2d
+from src.experiments_sp.utils.save_results import save_experiment_results, compute_statistics
 
 
-def make_grid_layout(n_side: int = 8, span: float = 2.0) -> np.ndarray:
-    """
-    Generate a simple 2D grid layout.
-    
-    Parameters
-    ----------
-    n_side : int, default=8
-        Number of points per side
-    span : float, default=2.0
-        Grid span in [-span/2, span/2]
-    
-    Returns
-    -------
-    coords : ndarray, shape (n_side^2, 2)
-        Grid coordinates
-    """
-    xs = np.linspace(-span / 2.0, span / 2.0, n_side)
-    ys = np.linspace(-span / 2.0, span / 2.0, n_side)
-    xv, yv = np.meshgrid(xs, ys)
-    coords = np.stack([xv.ravel(), yv.ravel()], axis=1)
-    return coords
+def make_grid_layout(n_side: int = 6) -> np.ndarray:
+    """Generate n_side × n_side grid layout."""
+    x = np.linspace(0, 1, n_side)
+    y = np.linspace(0, 1, n_side)
+    xx, yy = np.meshgrid(x, y)
+    return np.column_stack([xx.ravel(), yy.ravel()])
 
 
 def run_sp00_identity_isometry(
-    n_trials: int = 100,
+    n_trials: int = 1,
     seed: int = 42,
-    out_dir: Path = Path("outputs_sp/i2_sp_instrument/sp00_identity_isometry"),
+    out_dir: Path = Path("outputs_sp/sp00_identity_isometry"),
 ) -> None:
     """
-    I-2: SP-00 Identity & Isometry test.
-    
-    For each trial, apply a set of isometries to a base grid layout and
-    verify that SP ≈ 1.
+    Test SP invariance under isometric transformations.
     
     Parameters
     ----------
-    n_trials : int, default=100
-        Number of trials per transformation
+    n_trials : int, default=1
+        Number of trials (typically 1 for deterministic transforms)
     seed : int, default=42
-        Random seed for reproducibility
+        Random seed
     out_dir : Path
         Output directory
     """
     rng = np.random.default_rng(seed)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    base_coords = make_grid_layout(n_side=8, span=2.0)
-    layout_type = "grid"
-
-    angles_deg = [0.0, 30.0, 60.0, 90.0, 120.0, 180.0]
-    scales = [(1.0, 1.0), (2.0, 2.0), (0.5, 0.5)]  # Uniform isotropic scales
-
+    
+    # Parameters
+    layout = "grid"
+    rotations_deg = [0.0, 30.0, 60.0, 90.0, 120.0, 180.0]
+    scales = [(0.5, 0.5), (1.0, 1.0), (2.0, 2.0)]
+    
+    base_coords = make_grid_layout(n_side=6)
+    
     records = []
-
+    
     for trial in range(n_trials):
-        # Test rotations
-        for theta_deg in angles_deg:
-            theta_rad = np.deg2rad(theta_deg)
-            coords_rot = rotate_2d(base_coords, theta_rad, center=(0.0, 0.0))
-            sp_val = compute_sp_total(base_coords, coords_rot, layout_type=layout_type)
-            records.append(
-                {
-                    "trial": trial,
-                    "transform": "rotation",
-                    "theta_deg": theta_deg,
-                    "sp": sp_val,
-                }
-            )
-
-        # Test uniform scaling
+        # Rotation tests
+        for theta_deg in rotations_deg:
+            coords_rot = rotate_2d(base_coords, theta_deg=theta_deg)
+            sp = compute_sp_total(base_coords, coords_rot, layout_type=layout)
+            
+            records.append({
+                "layout": layout,
+                "transform": "rotation",
+                "theta_deg": theta_deg,
+                "sx": None,
+                "sy": None,
+                "sp": sp
+            })
+        
+        # Scale tests
         for sx, sy in scales:
-            coords_scaled = scale_2d(base_coords, sx=sx, sy=sy, center=(0.0, 0.0))
-            sp_val = compute_sp_total(base_coords, coords_scaled, layout_type=layout_type)
-            records.append(
-                {
-                    "trial": trial,
-                    "transform": "scale",
+            coords_scale = scale_2d(base_coords, sx=sx, sy=sy)
+            sp = compute_sp_total(base_coords, coords_scale, layout_type=layout)
+            
+            records.append({
+                "layout": layout,
+                "transform": "scale",
+                "theta_deg": None,
+                "sx": sx,
+                "sy": sy,
+                "sp": sp
+            })
+    
+    # Compute summary statistics
+    summary_rows = []
+    
+    # Group by transform type
+    for transform in ["rotation", "scale"]:
+        transform_records = [r for r in records if r["transform"] == transform]
+        
+        if transform == "rotation":
+            # Group by theta_deg
+            for theta in rotations_deg:
+                theta_records = [r for r in transform_records if r["theta_deg"] == theta]
+                sp_values = [r["sp"] for r in theta_records]
+                stats = compute_statistics(sp_values)
+                
+                summary_rows.append({
+                    "layout": layout,
+                    "transform": transform,
+                    "theta_deg": theta,
+                    "sx": None,
+                    "sy": None,
+                    "n": stats["n"],
+                    "sp_mean": stats["mean"],
+                    "sp_std": stats["std"],
+                    "sp_ci_low": stats["ci_low"],
+                    "sp_ci_high": stats["ci_high"]
+                })
+        
+        elif transform == "scale":
+            # Group by (sx, sy)
+            for sx, sy in scales:
+                scale_records = [r for r in transform_records 
+                               if r["sx"] == sx and r["sy"] == sy]
+                sp_values = [r["sp"] for r in scale_records]
+                stats = compute_statistics(sp_values)
+                
+                summary_rows.append({
+                    "layout": layout,
+                    "transform": transform,
+                    "theta_deg": None,
                     "sx": sx,
                     "sy": sy,
-                    "sp": sp_val,
-                }
-            )
-
-    # Save raw records
-    out_path = out_dir / "sp00_identity_isometry_raw.json"
-    with out_path.open("w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "parameters": {
-                    "n_trials": n_trials,
-                    "seed": seed,
-                    "layout_type": layout_type,
-                    "angles_deg": angles_deg,
-                    "scales": scales,
-                },
-                "records": records,
-            },
-            f,
-            ensure_ascii=False,
-            indent=2,
-        )
-    print(f"✅ Saved raw records to {out_path}")
-    print(f"   Total records: {len(records)}")
+                    "n": stats["n"],
+                    "sp_mean": stats["mean"],
+                    "sp_std": stats["std"],
+                    "sp_ci_low": stats["ci_low"],
+                    "sp_ci_high": stats["ci_high"]
+                })
+    
+    summary_df = pd.DataFrame(summary_rows)
+    
+    # Save results
+    save_experiment_results(
+        experiment_id="sp00_identity_isometry",
+        version="v2.0.0",
+        parameters={
+            "n_trials": n_trials,
+            "seed": seed,
+            "layouts": [layout],
+            "rotations_deg": rotations_deg,
+            "scales": scales
+        },
+        records=records,
+        summary_df=summary_df,
+        out_dir=out_dir
+    )
 
 
 if __name__ == "__main__":
