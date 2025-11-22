@@ -1,0 +1,64 @@
+name: Test DR Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test type'
+        required: true
+        default: 'import_only'
+        type: choice
+        options:
+          - import_only    # Quick import test (30 seconds)
+          - small_run      # Small demo (n=10, 2-3 minutes)
+
+jobs:
+  test-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run import test
+      if: inputs.test_type == 'import_only'
+      run: |
+        python demos/dr_evaluation/test_demo.py
+    
+    - name: Run small demo
+      if: inputs.test_type == 'small_run'
+      run: |
+        echo "Running small demo (n=10)..."
+        python -c "
+        from demos.dr_evaluation.load_data import load_mnist_subset
+        from demos.dr_evaluation.apply_dr import apply_all_methods
+        from demos.dr_evaluation.compute_metrics import compute_all_metrics
+        
+        print('Testing with n=10...')
+        X, y = load_mnist_subset(n_per_class=1, random_state=42)
+        embeddings = apply_all_methods(X, random_state=42)
+        results = compute_all_metrics(X, embeddings)
+        print('\n✅ Demo test successful!')
+        print(results)
+        "
+    
+    - name: Summary
+      if: always()
+      run: |
+        echo "## DR Demo Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Test type: ${{ inputs.test_type }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Test completed" >> $GITHUB_STEP_SUMMARY
