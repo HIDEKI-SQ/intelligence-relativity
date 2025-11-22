@@ -41,7 +41,6 @@ def run_sp03_layout_robustness(
     rng = np.random.default_rng(seed)
     layouts = ["grid", "line", "circle", "random"]
     n_items = 36
-    dim = 2
     
     records = []
     
@@ -49,7 +48,6 @@ def run_sp03_layout_robustness(
         # Generate base coordinates
         base_coords = generate_spatial_coords(
             n_items=n_items,
-            dim=dim,
             layout=layout,
             seed=seed
         )
@@ -105,8 +103,7 @@ def run_sp03_layout_robustness(
             "n_trials": n_trials,
             "seed": seed,
             "layouts": layouts,
-            "n_items": n_items,
-            "dim": dim
+            "n_items": n_items
         },
         records=records,
         summary_df=summary_df,
