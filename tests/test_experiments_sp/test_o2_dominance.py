@@ -33,18 +33,19 @@ class TestSP10MetricInvariance:
     
     def test_sp10_runs(self, temp_output_dir):
         """Test: SP-10 runs without errors."""
-        out_dir = temp_output_dir / "sp10"
+        out_dir = temp_output_dir / "sp10_metric_invariance"
         run_sp10_metric_invariance(n_trials=5, seed=101, out_dir=out_dir)
         
-        output_file = out_dir / "sp10_metric_invariance_raw.json"
+        # New naming convention: {id}_raw.json
+        output_file = out_dir / "sp10_raw.json"
         assert output_file.exists()
     
     def test_sp10_sp_high(self, temp_output_dir):
         """Test: Metric transforms → SP reasonably high."""
-        out_dir = temp_output_dir / "sp10"
+        out_dir = temp_output_dir / "sp10_metric_invariance"
         run_sp10_metric_invariance(n_trials=10, seed=101, out_dir=out_dir)
         
-        with open(out_dir / "sp10_metric_invariance_raw.json") as f:
+        with open(out_dir / "sp10_raw.json") as f:
             data = json.load(f)
         
         sp_vals = [r["sp"] for r in data["records"]]
@@ -58,15 +59,15 @@ class TestSP11TopologySensitivity:
     
     def test_sp11_runs(self, temp_output_dir):
         """Test: SP-11 runs without errors."""
-        out_dir = temp_output_dir / "sp11"
+        out_dir = temp_output_dir / "sp11_topology_sensitivity"
         run_sp11_topology_sensitivity(n_trials=5, seed=202, out_dir=out_dir)
         
-        output_file = out_dir / "sp11_topology_sensitivity_raw.json"
+        output_file = out_dir / "sp11_raw.json"
         assert output_file.exists()
     
     def test_sp11_monotonic_decrease(self, temp_output_dir):
         """Test: p↑ → SP↓."""
-        out_dir = temp_output_dir / "sp11"
+        out_dir = temp_output_dir / "sp11_topology_sensitivity"
         run_sp11_topology_sensitivity(
             n_trials=10,
             seed=202,
@@ -74,7 +75,7 @@ class TestSP11TopologySensitivity:
             out_dir=out_dir
         )
         
-        with open(out_dir / "sp11_topology_sensitivity_raw.json") as f:
+        with open(out_dir / "sp11_raw.json") as f:
             data = json.load(f)
         
         sp_by_p = {}
@@ -95,24 +96,23 @@ class TestSP12TopologyVsMetric:
     
     def test_sp12_runs(self, temp_output_dir):
         """Test: SP-12 runs without errors."""
-        out_dir = temp_output_dir / "sp12"
+        out_dir = temp_output_dir / "sp12_topology_vs_metric"
         run_sp12_topology_vs_metric(n_trials=5, seed=303, out_dir=out_dir)
         
-        output_file = out_dir / "sp12_topology_vs_metric_raw.json"
+        output_file = out_dir / "sp12_raw.json"
         assert output_file.exists()
     
     def test_sp12_family_separation(self, temp_output_dir):
         """Test: Topology family < Metric family (realistic margin)."""
-        out_dir = temp_output_dir / "sp12"
+        out_dir = temp_output_dir / "sp12_topology_vs_metric"
         run_sp12_topology_vs_metric(
             n_trials=10,
             seed=303,
-            p_values=(0.5,),
-            shear_k=(0.5,),
+            levels=(0.5,),
             out_dir=out_dir
         )
         
-        with open(out_dir / "sp12_topology_vs_metric_raw.json") as f:
+        with open(out_dir / "sp12_raw.json") as f:
             data = json.load(f)
         
         topology_sp = [r["sp"] for r in data["records"] if r["family"] == "topology"]
@@ -130,18 +130,18 @@ class TestSP13LayoutGeneralization:
     
     def test_sp13_runs(self, temp_output_dir):
         """Test: SP-13 runs without errors."""
-        out_dir = temp_output_dir / "sp13"
+        out_dir = temp_output_dir / "sp13_layout_generalization"
         run_sp13_layout_generalization(n_trials=5, seed=404, out_dir=out_dir)
         
-        output_file = out_dir / "sp13_layout_generalization_raw.json"
+        output_file = out_dir / "sp13_raw.json"
         assert output_file.exists()
     
     def test_sp13_pattern_consistent(self, temp_output_dir):
         """Test: Topology < Metric for all layouts (realistic margin)."""
-        out_dir = temp_output_dir / "sp13"
+        out_dir = temp_output_dir / "sp13_layout_generalization"
         run_sp13_layout_generalization(n_trials=10, seed=404, out_dir=out_dir)
         
-        with open(out_dir / "sp13_layout_generalization_raw.json") as f:
+        with open(out_dir / "sp13_raw.json") as f:
             data = json.load(f)
         
         # Group by layout and family
