@@ -2,7 +2,7 @@
 
 Validates:
     - Experiments run without errors
-    - Generate raw.json and summary.csv
+    - Generate {id}_raw.json and {id}_summary.csv
     - Output structure matches v2.0.0 spec
 """
 import pytest
@@ -28,13 +28,29 @@ def temp_output_dir(tmp_path):
 
 
 def validate_v2_output(exp_dir: Path, experiment_id: str):
-    """Validate that experiment output matches v2.0.0 spec."""
-    # Check files exist
-    raw_file = exp_dir / "raw.json"
-    summary_file = exp_dir / "summary.csv"
+    """Validate that experiment output matches v2.0.0 spec.
     
-    assert raw_file.exists(), f"raw.json not found in {exp_dir}"
-    assert summary_file.exists(), f"summary.csv not found in {exp_dir}"
+    Parameters
+    ----------
+    exp_dir : Path
+        Experiment output directory
+    experiment_id : str
+        Full experiment ID (e.g., "sp00_identity_isometry")
+    
+    Returns
+    -------
+    tuple
+        (raw_data dict, summary DataFrame)
+    """
+    # Extract short code from experiment_id (e.g., "sp00_identity_isometry" -> "sp00")
+    exp_code = experiment_id.split('_')[0]
+    
+    # New v2.0.0 naming convention
+    raw_file = exp_dir / f"{exp_code}_raw.json"
+    summary_file = exp_dir / f"{exp_code}_summary.csv"
+    
+    assert raw_file.exists(), f"{exp_code}_raw.json not found in {exp_dir}"
+    assert summary_file.exists(), f"{exp_code}_summary.csv not found in {exp_dir}"
     
     # Validate raw.json structure
     with raw_file.open() as f:
@@ -71,7 +87,8 @@ class TestSP00IdentityIsometry:
         out_dir = temp_output_dir / "sp00_identity_isometry"
         run_sp00_identity_isometry(n_trials=1, seed=42, out_dir=out_dir)
         
-        summary_df = pd.read_csv(out_dir / "summary.csv")
+        # Use new naming convention
+        summary_df = pd.read_csv(out_dir / "sp00_summary.csv")
         
         required_cols = ["layout", "transform", "n", "sp_mean", "sp_std", 
                         "sp_ci_low", "sp_ci_high"]
@@ -97,7 +114,8 @@ class TestSP01FullDestruction:
         out_dir = temp_output_dir / "sp01_full_destruction"
         run_sp01_full_destruction(n_trials=100, seed=123, out_dir=out_dir)
         
-        summary_df = pd.read_csv(out_dir / "summary.csv")
+        # Use new naming convention
+        summary_df = pd.read_csv(out_dir / "sp01_summary.csv")
         sp_mean = summary_df.iloc[0]["sp_mean"]
         
         assert sp_mean < 0.7, f"SP should be reduced, got {sp_mean}"
@@ -123,7 +141,8 @@ class TestSP02TopologyRewire:
             out_dir=out_dir
         )
         
-        summary_df = pd.read_csv(out_dir / "summary.csv")
+        # Use new naming convention
+        summary_df = pd.read_csv(out_dir / "sp02_summary.csv")
         
         sp_at_p0 = summary_df[summary_df["p"] == 0.0].iloc[0]["sp_adj_mean"]
         sp_at_p05 = summary_df[summary_df["p"] == 0.5].iloc[0]["sp_adj_mean"]
@@ -148,7 +167,8 @@ class TestSP03LayoutRobustness:
         out_dir = temp_output_dir / "sp03_layout_robustness"
         run_sp03_layout_robustness(n_trials=10, seed=55, out_dir=out_dir)
         
-        summary_df = pd.read_csv(out_dir / "summary.csv")
+        # Use new naming convention
+        summary_df = pd.read_csv(out_dir / "sp03_summary.csv")
         
         layouts = summary_df["layout"].unique()
         assert set(layouts) == {"grid", "line", "circle", "random"}
