@@ -1,85 +1,82 @@
 """SP-11: Topology Sensitivity Test.
-
-O-2 Topological Dominance: Verify that topology disruption
-(coordinate permutation) causes sharp SP decrease.
-
+O-2: Topological Dominance - Measure SP sensitivity to
+increasing levels of topological disruption (coordinate permutation).
 Expected Results:
-    - p=0.0: SP ≈ 1.0 (no disruption)
-    - p↑: SP ↓ sharply (monotonic decrease)
-    - p≥0.5: SP ≈ 0.0 (severe disruption)
-
+    - p=0: SP high (no disruption)
+    - p↑: SP↓ (monotonic decrease)
+    - Demonstrates topology-sensitivity
 Author: HIDEKI
 Date: 2025-11
 License: MIT
 """
-
 from __future__ import annotations
-
-import json
 from pathlib import Path
 import numpy as np
+import pandas as pd
 
 from src.core_sp.sp_metrics import compute_sp_total
 from src.core_sp.topology_ops import permute_coords
 from src.experiments_sp.i2_sp_instrument.sp00_identity_isometry import make_grid_layout
+from src.experiments_sp.utils.save_results import save_experiment_results, compute_statistics
 
 
 def run_sp11_topology_sensitivity(
-    n_trials: int = 200,
-    seed: int = 202,
+    n_trials: int = 1000,
+    seed: int = 201,
     p_values: tuple = (0.0, 0.1, 0.3, 0.5, 0.7),
-    out_dir: Path = Path("outputs_sp/o2_topological_dominance_sp/sp11_topology_sensitivity"),
+    out_dir: Path = Path("outputs_sp/sp11_topology_sensitivity"),
 ) -> None:
-    """
-    O-2: Topology disruption should sharply reduce SP.
-    
-    Parameters
-    ----------
-    n_trials : int, default=200
-        Number of trials per p value
-    seed : int, default=202
-        Random seed for reproducibility
-    p_values : tuple, default=(0.0, 0.1, 0.3, 0.5, 0.7)
-        Permutation proportions to test
-    out_dir : Path
-        Output directory
-    """
+    """Test SP sensitivity to topological disruption strength."""
     rng = np.random.default_rng(seed)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    base_coords = make_grid_layout(n_side=8)
-    layout_type = "grid"
-
+    layout = "grid"
+    
+    base_coords = make_grid_layout(n_side=6)
+    
     records = []
-
+    
     for p in p_values:
         for trial in range(n_trials):
-            coords_new = permute_coords(base_coords, rng=rng, p=p)
-            sp_val = compute_sp_total(base_coords, coords_new, layout_type=layout_type)
+            coords_permuted = permute_coords(base_coords, rng=rng, p=p)
+            sp = compute_sp_total(base_coords, coords_permuted, layout_type=layout)
+            
             records.append({
                 "p": p,
                 "trial": trial,
-                "sp": sp_val
+                "sp": sp
             })
-
-    out_path = out_dir / "sp11_topology_sensitivity_raw.json"
-    with out_path.open("w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "parameters": {
-                    "n_trials": n_trials,
-                    "p_values": list(p_values),
-                    "seed": seed
-                },
-                "records": records
-            },
-            f,
-            ensure_ascii=False,
-            indent=2
-        )
-
-    print(f"✅ Saved raw records to {out_path}")
-    print(f"   Total records: {len(records)}")
+    
+    # Compute summary statistics
+    summary_rows = []
+    
+    for p in p_values:
+        p_records = [r for r in records if r["p"] == p]
+        sp_values = [r["sp"] for r in p_records]
+        stats = compute_statistics(sp_values)
+        
+        summary_rows.append({
+            "p": p,
+            "n": stats["n"],
+            "sp_mean": stats["mean"],
+            "sp_std": stats["std"],
+            "sp_ci_low": stats["ci_low"],
+            "sp_ci_high": stats["ci_high"]
+        })
+    
+    summary_df = pd.DataFrame(summary_rows)
+    
+    save_experiment_results(
+        experiment_id="sp11_topology_sensitivity",
+        version="v2.0.0",
+        parameters={
+            "n_trials": n_trials,
+            "seed": seed,
+            "layout": layout,
+            "p_values": list(p_values)
+        },
+        records=records,
+        summary_df=summary_df,
+        out_dir=out_dir
+    )
 
 
 if __name__ == "__main__":
