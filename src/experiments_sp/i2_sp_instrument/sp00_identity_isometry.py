@@ -1,11 +1,14 @@
 """SP-00: Identity & Isometry Test.
+
 Instrument Validation: Verify that isometric transformations
 (rotation, uniform scaling) preserve SP, demonstrating that
 SP measures topology, not geometry.
+
 Expected Results:
     - Rotation: SP invariant across angles
     - Uniform scaling: SP invariant
     - Identity: SP ≈ 1
+
 Author: HIDEKI
 Date: 2025-11
 License: MIT
@@ -17,6 +20,7 @@ import pandas as pd
 
 from src.core_sp.sp_metrics import compute_sp_total
 from src.core_sp.metric_ops import rotate_2d, scale_2d
+from src.core_sp.deterministic import verify_environment
 from src.experiments_sp.utils.save_results import save_experiment_results, compute_statistics
 
 
@@ -45,6 +49,9 @@ def run_sp00_identity_isometry(
     out_dir : Path
         Output directory
     """
+    # Create output directory
+    out_dir.mkdir(parents=True, exist_ok=True)
+    
     # Parameters
     layout = "grid"
     rotations_deg = [0.0, 30.0, 60.0, 90.0, 120.0, 180.0]
@@ -148,6 +155,9 @@ def run_sp00_identity_isometry(
         summary_df=summary_df,
         out_dir=out_dir
     )
+    
+    # Save environment information
+    verify_environment(out_dir / "env.txt")
 
 
 if __name__ == "__main__":
