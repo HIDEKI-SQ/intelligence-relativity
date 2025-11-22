@@ -13,27 +13,25 @@ Author: HIDEKI
 Date: 2025-11
 License: MIT
 """
-
 from __future__ import annotations
-
-import json
 from pathlib import Path
 import numpy as np
+import pandas as pd
 
 from src.core_sp.sp_metrics import compute_sp_total
 from src.core_sp.ssc_wrapper import compute_ssc
 from src.core_sp.value_gate import apply_value_gate
 from src.experiments_sp.bert_utils import load_bert_embeddings
+from src.experiments_sp.utils.save_results import save_experiment_results, compute_statistics
 
 
 def run_sp31_lambda_sweep_bert(
     n_trials: int = 1000,
     seed: int = 601,
-    lambdas: tuple = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
-    out_dir: Path = Path("outputs_sp/o4_value_gate_tradeoff_sp/sp31_lambda_sweep_bert"),
+    lambda_values: tuple = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
+    out_dir: Path = Path("outputs_sp/sp31_lambda_sweep_bert"),
 ) -> None:
-    """
-    O-4: λ sweep with BERT embeddings (SP & SSC).
+    """Test SSC-SP tradeoff with value gate parameter λ (BERT embeddings).
     
     Parameters
     ----------
@@ -41,14 +39,13 @@ def run_sp31_lambda_sweep_bert(
         Number of trials per λ value
     seed : int, default=601
         Random seed for reproducibility
-    lambdas : tuple, default=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
+    lambda_values : tuple
         Value gate parameters to test
     out_dir : Path
         Output directory
     """
     rng = np.random.default_rng(seed)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
+    
     # Load BERT embeddings (cached after first call)
     print("Loading BERT embeddings...")
     bert_data = load_bert_embeddings(seed=seed)
@@ -59,10 +56,10 @@ def run_sp31_lambda_sweep_bert(
     print(f"  Loaded {n_items} items with embeddings shape {sem.shape}")
     
     layout_type = "circle"  # BERT uses circle layout by default
-
+    
     records = []
-
-    for lam in lambdas:
+    
+    for lam in lambda_values:
         print(f"  Processing λ={lam}...")
         for trial in range(n_trials):
             # Apply value gate to create λ-modulated coordinates
@@ -70,37 +67,58 @@ def run_sp31_lambda_sweep_bert(
             coords_value = apply_value_gate(
                 base_coords, sem, lam, seed=trial_seed, radius=1.0
             )
-
+            
+            # Compute SP and SSC
             sp_val = compute_sp_total(base_coords, coords_value, layout_type=layout_type)
             ssc_val = compute_ssc(sem, coords_value)
-
-            records.append(
-                {
-                    "lambda": lam,
-                    "trial": trial,
-                    "sp": sp_val,
-                    "ssc": ssc_val,
-                }
-            )
-
-    out_path = out_dir / "sp31_lambda_sweep_bert_raw.json"
-    with out_path.open("w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "parameters": {
-                    "n_trials": n_trials,
-                    "seed": seed,
-                    "n_items": n_items,
-                    "lambdas": list(lambdas),
-                },
-                "records": records,
-            },
-            f,
-            ensure_ascii=False,
-            indent=2,
-        )
-    print(f"✅ Saved raw records to {out_path}")
-    print(f"   Total records: {len(records)}")
+            
+            records.append({
+                "lambda": lam,
+                "trial": trial,
+                "sp": sp_val,
+                "ssc": ssc_val
+            })
+    
+    # Compute summary statistics per λ
+    summary_rows = []
+    
+    for lam in lambda_values:
+        lam_records = [r for r in records if r["lambda"] == lam]
+        
+        sp_values = [r["sp"] for r in lam_records]
+        ssc_values = [r["ssc"] for r in lam_records]
+        
+        sp_stats = compute_statistics(sp_values)
+        ssc_stats = compute_statistics(ssc_values)
+        
+        summary_rows.append({
+            "lambda": lam,
+            "n": sp_stats["n"],
+            "sp_mean": sp_stats["mean"],
+            "sp_std": sp_stats["std"],
+            "sp_ci_low": sp_stats["ci_low"],
+            "sp_ci_high": sp_stats["ci_high"],
+            "ssc_mean": ssc_stats["mean"],
+            "ssc_std": ssc_stats["std"],
+            "ssc_ci_low": ssc_stats["ci_low"],
+            "ssc_ci_high": ssc_stats["ci_high"]
+        })
+    
+    summary_df = pd.DataFrame(summary_rows)
+    
+    save_experiment_results(
+        experiment_id="sp31_lambda_sweep_bert",
+        version="v2.0.0",
+        parameters={
+            "n_trials": n_trials,
+            "seed": seed,
+            "n_items": n_items,
+            "lambda_values": list(lambda_values)
+        },
+        records=records,
+        summary_df=summary_df,
+        out_dir=out_dir
+    )
 
 
 if __name__ == "__main__":
