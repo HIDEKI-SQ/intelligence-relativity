@@ -1,5 +1,5 @@
 """SP-02: Topology Rewire Curve.
-Instrument Validation: Edge rewiring with increasing probability p
+Instrument Validation: Coordinate permutation with increasing probability p
 should show monotonic decrease in SP_adj, demonstrating sensitivity
 to topological disruption strength.
 Expected Results:
@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from src.core_sp.sp_metrics import compute_sp_total
-from src.core_sp.topology_ops import edge_rewire
+from src.core_sp.topology_ops import permute_coords
 from src.experiments_sp.i2_sp_instrument.sp00_identity_isometry import make_grid_layout
 from src.experiments_sp.utils.save_results import save_experiment_results, compute_statistics
 
@@ -28,7 +28,7 @@ def run_sp02_topology_rewire_curve(
     out_dir: Path = Path("outputs_sp/sp02_topology_rewire_curve"),
 ) -> None:
     """
-    SP response to edge rewiring probability.
+    SP response to coordinate permutation probability.
     
     Parameters
     ----------
@@ -37,13 +37,12 @@ def run_sp02_topology_rewire_curve(
     seed : int, default=77
         Random seed
     p_values : tuple, default=(0.0, 0.1, 0.3, 0.5, 0.7, 1.0)
-        Rewiring probabilities to test
+        Permutation probabilities to test
     out_dir : Path
         Output directory
     """
     rng = np.random.default_rng(seed)
     layout = "grid"
-    k = 4  # KNN k
     
     base_coords = make_grid_layout(n_side=6)
     
@@ -51,9 +50,9 @@ def run_sp02_topology_rewire_curve(
     
     for p in p_values:
         for trial in range(n_trials):
-            # Edge rewire
-            coords_rewired = edge_rewire(base_coords, rng=rng, p=p, k=k)
-            sp_adj = compute_sp_total(base_coords, coords_rewired, layout_type=layout)
+            # Permute coordinates (topology disruption)
+            coords_permuted = permute_coords(base_coords, rng=rng, p=p)
+            sp_adj = compute_sp_total(base_coords, coords_permuted, layout_type=layout)
             
             records.append({
                 "p": p,
@@ -88,8 +87,7 @@ def run_sp02_topology_rewire_curve(
             "n_trials": n_trials,
             "seed": seed,
             "layout": layout,
-            "p_values": list(p_values),
-            "k": k
+            "p_values": list(p_values)
         },
         records=records,
         summary_df=summary_df,
