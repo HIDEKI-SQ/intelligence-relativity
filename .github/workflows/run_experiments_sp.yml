@@ -12,9 +12,11 @@ on:
           - i2       # I-2: Instrument validation (4 experiments)
           - o2       # O-2: Topological dominance (4 experiments)
           - o3       # O-3: SP-SSC independence (3 experiments)
-          - o4_synth # O-4: Value gate (synthetic only, 1 experiment)
+          - o4_synth # O-4: Value gate (synthetic only, 1 experiment, FAST)
+          - o4       # O-4: Value gate (synthetic + BERT, 2 experiments, SLOW)
           - robust   # Robustness (3 experiments)
-          - all      # All experiments (WARNING: long runtime)
+          - all_fast # All experiments EXCEPT BERT (faster)
+          - all      # All experiments INCLUDING BERT (WARNING: very long runtime)
       
       n_trials:
         description: 'Number of trials per experiment'
@@ -29,7 +31,7 @@ on:
 jobs:
   run-experiments:
     runs-on: ubuntu-latest
-    timeout-minutes: 120  # 2時間制限
+    timeout-minutes: 180  # 3時間制限（BERT対応）
     
     steps:
     - name: Checkout code
@@ -53,7 +55,10 @@ jobs:
         echo "OMP_NUM_THREADS=1" >> $GITHUB_ENV
     
     - name: Run I-2 experiments
-      if: inputs.experiment_set == 'i2' || inputs.experiment_set == 'all'
+      if: |
+        inputs.experiment_set == 'i2' || 
+        inputs.experiment_set == 'all_fast' || 
+        inputs.experiment_set == 'all'
       run: |
         python -c "
         from src.experiments_sp.i2_sp_instrument.sp00_identity_isometry import run_sp00_identity_isometry
@@ -69,7 +74,10 @@ jobs:
         "
     
     - name: Run O-2 experiments
-      if: inputs.experiment_set == 'o2' || inputs.experiment_set == 'all'
+      if: |
+        inputs.experiment_set == 'o2' || 
+        inputs.experiment_set == 'all_fast' || 
+        inputs.experiment_set == 'all'
       run: |
         python -c "
         from src.experiments_sp.o2_topological_dominance_sp.sp10_metric_invariance import run_sp10_metric_invariance
@@ -85,7 +93,10 @@ jobs:
         "
     
     - name: Run O-3 experiments
-      if: inputs.experiment_set == 'o3' || inputs.experiment_set == 'all'
+      if: |
+        inputs.experiment_set == 'o3' || 
+        inputs.experiment_set == 'all_fast' || 
+        inputs.experiment_set == 'all'
       run: |
         python -c "
         from src.experiments_sp.o3_stress_independence_sp_ssc.sp20_coord_noise_sp_ssc import run_sp20_coord_noise_sp_ssc
@@ -99,17 +110,35 @@ jobs:
         "
     
     - name: Run O-4 experiments (synthetic only)
-      if: inputs.experiment_set == 'o4_synth' || inputs.experiment_set == 'all'
+      if: |
+        inputs.experiment_set == 'o4_synth' || 
+        inputs.experiment_set == 'o4' || 
+        inputs.experiment_set == 'all_fast' || 
+        inputs.experiment_set == 'all'
       run: |
         python -c "
         from src.experiments_sp.o4_value_gate_tradeoff_sp.sp30_lambda_sweep_synth import run_sp30_lambda_sweep_synth
         n_trials = ${{ inputs.n_trials }}
-        print(f'Running O-4 experiments with n_trials={n_trials}')
+        print(f'Running O-4 (synthetic) with n_trials={n_trials}')
         run_sp30_lambda_sweep_synth(n_trials=n_trials)
         "
     
+    - name: Run O-4 experiments (BERT) ⚠️ SLOW
+      if: inputs.experiment_set == 'o4' || inputs.experiment_set == 'all'
+      run: |
+        python -c "
+        from src.experiments_sp.o4_value_gate_tradeoff_sp.sp31_lambda_sweep_bert import run_sp31_lambda_sweep_bert
+        n_trials = ${{ inputs.n_trials }}
+        print(f'⚠️  Running O-4 (BERT) with n_trials={n_trials}')
+        print(f'⚠️  This may take 10-30 minutes or longer...')
+        run_sp31_lambda_sweep_bert(n_trials=n_trials)
+        "
+    
     - name: Run Robustness experiments
-      if: inputs.experiment_set == 'robust' || inputs.experiment_set == 'all'
+      if: |
+        inputs.experiment_set == 'robust' || 
+        inputs.experiment_set == 'all_fast' || 
+        inputs.experiment_set == 'all'
       run: |
         python -c "
         from src.experiments_sp.sp_robustness.sp40_dimN_sp_robustness import run_sp40_dimN_sp_robustness
@@ -131,7 +160,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: experiment-outputs-${{ inputs.experiment_set }}
+        name: experiment-outputs-${{ inputs.experiment_set }}-n${{ inputs.n_trials }}
         path: outputs_sp/
         retention-days: 30
     
@@ -141,14 +170,16 @@ jobs:
         echo "## Experiment Results (${{ inputs.experiment_set }})" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Parameters" >> $GITHUB_STEP_SUMMARY
+        echo "- Experiment set: ${{ inputs.experiment_set }}" >> $GITHUB_STEP_SUMMARY
         echo "- n_trials: ${{ inputs.n_trials }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Output Files" >> $GITHUB_STEP_SUMMARY
         echo "📁 Total files: $(find outputs_sp/ -type f | wc -l)" >> $GITHUB_STEP_SUMMARY
+        echo "📊 Summary files: $(find outputs_sp/ -name 'summary*.csv' | wc -l)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        if [ -f outputs_sp/summary_all.csv ]; then
-          echo "### Summary Catalog" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat outputs_sp/summary_all.csv >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+        if ls outputs_sp/summary_all_*.csv 1> /dev/null 2>&1; then
+          echo "### Generated Summary Files" >> $GITHUB_STEP_SUMMARY
+          for f in outputs_sp/summary_all_*.csv; do
+            echo "- $(basename $f): $(wc -l < $f) rows" >> $GITHUB_STEP_SUMMARY
+          done
         fi
