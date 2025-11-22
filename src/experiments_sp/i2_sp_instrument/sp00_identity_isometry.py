@@ -39,14 +39,12 @@ def run_sp00_identity_isometry(
     Parameters
     ----------
     n_trials : int, default=1
-        Number of trials (typically 1 for deterministic transforms)
+        Number of trials (ignored for deterministic transforms, kept for API consistency)
     seed : int, default=42
-        Random seed
+        Random seed (unused but kept for consistency)
     out_dir : Path
         Output directory
     """
-    rng = np.random.default_rng(seed)
-    
     # Parameters
     layout = "grid"
     rotations_deg = [0.0, 30.0, 60.0, 90.0, 120.0, 180.0]
@@ -56,35 +54,34 @@ def run_sp00_identity_isometry(
     
     records = []
     
-    for trial in range(n_trials):
-        # Rotation tests
-        for theta_deg in rotations_deg:
-            theta_rad = np.deg2rad(theta_deg)
-            coords_rot = rotate_2d(base_coords, theta_rad=theta_rad)
-            sp = compute_sp_total(base_coords, coords_rot, layout_type=layout)
-            
-            records.append({
-                "layout": layout,
-                "transform": "rotation",
-                "theta_deg": theta_deg,
-                "sx": None,
-                "sy": None,
-                "sp": sp
-            })
+    # Rotation tests (deterministic - run once per condition)
+    for theta_deg in rotations_deg:
+        theta_rad = np.deg2rad(theta_deg)
+        coords_rot = rotate_2d(base_coords, theta_rad=theta_rad)
+        sp = compute_sp_total(base_coords, coords_rot, layout_type=layout)
         
-        # Scale tests
-        for sx, sy in scales:
-            coords_scale = scale_2d(base_coords, sx=sx, sy=sy)
-            sp = compute_sp_total(base_coords, coords_scale, layout_type=layout)
-            
-            records.append({
-                "layout": layout,
-                "transform": "scale",
-                "theta_deg": None,
-                "sx": sx,
-                "sy": sy,
-                "sp": sp
-            })
+        records.append({
+            "layout": layout,
+            "transform": "rotation",
+            "theta_deg": theta_deg,
+            "sx": None,
+            "sy": None,
+            "sp": sp
+        })
+    
+    # Scale tests (deterministic - run once per condition)
+    for sx, sy in scales:
+        coords_scale = scale_2d(base_coords, sx=sx, sy=sy)
+        sp = compute_sp_total(base_coords, coords_scale, layout_type=layout)
+        
+        records.append({
+            "layout": layout,
+            "transform": "scale",
+            "theta_deg": None,
+            "sx": sx,
+            "sy": sy,
+            "sp": sp
+        })
     
     # Compute summary statistics
     summary_rows = []
@@ -141,7 +138,7 @@ def run_sp00_identity_isometry(
         experiment_id="sp00_identity_isometry",
         version="v2.0.0",
         parameters={
-            "n_trials": n_trials,
+            "n_trials": 1,  # Fixed to 1 for deterministic transforms
             "seed": seed,
             "layouts": [layout],
             "rotations_deg": rotations_deg,
