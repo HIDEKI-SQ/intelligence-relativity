@@ -11,7 +11,8 @@ from typing import Dict
 
 def apply_all_methods(
     X: np.ndarray,
-    random_state: int = 42
+    random_state: int = 42,
+    perplexity: int = None
 ) -> Dict[str, np.ndarray]:
     """
     Apply t-SNE, UMAP, and PCA to input data.
@@ -22,6 +23,8 @@ def apply_all_methods(
         High-dimensional input data
     random_state : int, default=42
         Random seed for reproducibility
+    perplexity : int, optional
+        t-SNE perplexity parameter. If None, auto-adjusted based on sample size.
     
     Returns
     -------
@@ -42,17 +45,23 @@ def apply_all_methods(
     
     # t-SNE
     print(f"  Running t-SNE...")
-    tsne = TSNE(n_components=2, random_state=random_state, perplexity=30)
+    # Auto-adjust perplexity based on sample size
+    n_samples = X.shape[0]
+    if perplexity is None:
+        perplexity = min(30, max(5, n_samples // 3))
+    tsne = TSNE(n_components=2, random_state=random_state, perplexity=perplexity)
     embeddings['tsne'] = tsne.fit_transform(X)
-    print(f"  ✅ t-SNE completed")
+    print(f"  ✅ t-SNE completed (perplexity={perplexity})")
     
     # UMAP
     print(f"  Running UMAP...")
     try:
         from umap import UMAP
-        umap = UMAP(n_components=2, random_state=random_state, n_neighbors=15)
+        # Auto-adjust n_neighbors based on sample size
+        n_neighbors = min(15, max(2, n_samples // 5))
+        umap = UMAP(n_components=2, random_state=random_state, n_neighbors=n_neighbors)
         embeddings['umap'] = umap.fit_transform(X)
-        print(f"  ✅ UMAP completed")
+        print(f"  ✅ UMAP completed (n_neighbors={n_neighbors})")
     except ImportError:
         print(f"  ⚠️  UMAP not available (install umap-learn)")
         embeddings['umap'] = None
