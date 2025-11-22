@@ -11,11 +11,22 @@ on:
         options:
           - import_only    # Quick import test (30 seconds)
           - small_run      # Small demo (n=10, 2-3 minutes)
+          - full_run       # Full demo with outputs (n=50, 5-10 minutes)
+      
+      n_per_class:
+        description: 'Samples per class (for full_run only)'
+        required: false
+        default: '50'
+        type: choice
+        options:
+          - '10'
+          - '50'
+          - '100'
 
 jobs:
   test-demo:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     
     steps:
     - name: Checkout code
@@ -54,11 +65,87 @@ jobs:
         print(results)
         "
     
+    - name: Run full demo
+      if: inputs.test_type == 'full_run'
+      run: |
+        echo "Running full demo (n=${{ inputs.n_per_class }} per class)..."
+        python -c "
+        import sys
+        from pathlib import Path
+        
+        # Modify run_dr_demo to use custom n_per_class
+        project_root = Path.cwd()
+        sys.path.insert(0, str(project_root))
+        
+        from demos.dr_evaluation.load_data import load_mnist_subset
+        from demos.dr_evaluation.apply_dr import apply_all_methods
+        from demos.dr_evaluation.compute_metrics import compute_all_metrics
+        from demos.dr_evaluation.visualize_results import plot_comparison_bar, plot_embeddings_scatter
+        
+        # Setup
+        output_dir = Path('demos/outputs/dr_evaluation')
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        n_per_class = ${{ inputs.n_per_class }}
+        print(f'='*60)
+        print(f'DR Evaluation Demo (n={n_per_class} per class)')
+        print(f'='*60)
+        
+        # Load data
+        X, y = load_mnist_subset(n_per_class=n_per_class, random_state=42)
+        
+        # Apply DR
+        embeddings = apply_all_methods(X, random_state=42)
+        
+        # Compute metrics
+        results = compute_all_metrics(X, embeddings, layout_type='cluster')
+        
+        # Save results
+        print(f'\n💾 Saving results...')
+        results_path = output_dir / 'results.csv'
+        results.to_csv(results_path, index=False, float_format='%.4f')
+        print(f'  ✅ Saved: {results_path}')
+        
+        # Generate visualizations
+        print(f'\n📊 Generating visualizations...')
+        plot_comparison_bar(results, output_path=output_dir / 'comparison_bar.png')
+        plot_embeddings_scatter(embeddings, labels=y, output_path=output_dir / 'embeddings_scatter.png')
+        
+        # Summary
+        print(f'\n{'='*60}')
+        print(f'✅ Demo completed successfully!')
+        print(f'{'='*60}')
+        print(f'\n📊 Results Summary:')
+        print(results.to_string(index=False))
+        "
+    
+    - name: Upload demo outputs
+      if: inputs.test_type == 'full_run'
+      uses: actions/upload-artifact@v4
+      with:
+        name: dr-demo-outputs-n${{ inputs.n_per_class }}
+        path: demos/outputs/
+        retention-days: 30
+    
     - name: Summary
       if: always()
       run: |
         echo "## DR Demo Test Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "Test type: ${{ inputs.test_type }}" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ inputs.test_type }}" = "full_run" ]; then
+          echo "Samples per class: ${{ inputs.n_per_class }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f demos/outputs/dr_evaluation/results.csv ]; then
+            echo "### Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat demos/outputs/dr_evaluation/results.csv >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
+        
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "✅ Test completed" >> $GITHUB_STEP_SUMMARY
