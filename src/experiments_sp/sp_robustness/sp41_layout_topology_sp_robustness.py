@@ -19,12 +19,7 @@ import pandas as pd
 
 from src.core_sp.sp_metrics import compute_sp_total
 from src.core_sp.topology_ops import permute_coords
-from src.experiments_sp.i2_sp_instrument.sp03_layout_robustness import (
-    make_line_layout,
-    make_circle_layout,
-    make_random_layout,
-)
-from src.experiments_sp.i2_sp_instrument.sp00_identity_isometry import make_grid_layout
+from src.core.generators import generate_spatial_coords
 from src.experiments_sp.utils.save_results import save_experiment_results, compute_statistics
 
 
@@ -49,12 +44,18 @@ def run_sp41_layout_topology_sp_robustness(
     """
     rng = np.random.default_rng(seed)
     
-    layouts = {
-        "grid": make_grid_layout(n_side=8),
-        "line": make_line_layout(),
-        "circle": make_circle_layout(),
-        "random": make_random_layout(64, rng=rng),
-    }
+    # Generate layouts using generate_spatial_coords
+    layout_names = ["grid", "line", "circle", "random"]
+    n_items = 64
+    
+    layouts = {}
+    for layout_name in layout_names:
+        coords = generate_spatial_coords(
+            n_items=n_items,
+            layout=layout_name,
+            seed=seed
+        )
+        layouts[layout_name] = coords
     
     records = []
     
