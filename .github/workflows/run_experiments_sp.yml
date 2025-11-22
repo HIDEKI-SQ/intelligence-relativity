@@ -122,10 +122,10 @@ jobs:
         run_sp42_knn_k_robustness(n_trials=n_trials)
         "
     
-    - name: Generate Overall Summary
+    - name: Generate Summary All
       if: always()
       run: |
-        python -m src.experiments_sp.generate_overall_summary
+        python -m src.experiments_sp.generate_summary_all
     
     - name: Upload experiment outputs
       if: always()
@@ -144,11 +144,11 @@ jobs:
         echo "- n_trials: ${{ inputs.n_trials }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Output Files" >> $GITHUB_STEP_SUMMARY
-        echo "📁 Total JSON files: $(find outputs_sp/ -name '*.json' | wc -l)" >> $GITHUB_STEP_SUMMARY
+        echo "📁 Total files: $(find outputs_sp/ -type f | wc -l)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        if [ -f outputs_sp/overall_summary.json ]; then
-          echo "### Overall Summary" >> $GITHUB_STEP_SUMMARY
-          echo '```json' >> $GITHUB_STEP_SUMMARY
-          cat outputs_sp/overall_summary.json >> $GITHUB_STEP_SUMMARY
+        if [ -f outputs_sp/summary_all.csv ]; then
+          echo "### Summary Catalog" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat outputs_sp/summary_all.csv >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
         fi
