@@ -194,9 +194,10 @@ class TestExperimentDeterminism:
         run_sp00_identity_isometry(n_trials=3, seed=42, out_dir=out_dir1)
         run_sp00_identity_isometry(n_trials=3, seed=42, out_dir=out_dir2)
         
-        with open(out_dir1 / "sp00_identity_isometry_raw.json") as f:
+        # Use new v2.0.0 naming convention: sp00_raw.json
+        with open(out_dir1 / "sp00_raw.json") as f:
             data1 = json.load(f)
-        with open(out_dir2 / "sp00_identity_isometry_raw.json") as f:
+        with open(out_dir2 / "sp00_raw.json") as f:
             data2 = json.load(f)
         
         sp_vals1 = [r["sp"] for r in data1["records"]]
@@ -215,9 +216,10 @@ class TestExperimentDeterminism:
         run_sp30_lambda_sweep_synth(n_trials=3, seed=600, out_dir=out_dir1)
         run_sp30_lambda_sweep_synth(n_trials=3, seed=600, out_dir=out_dir2)
         
-        with open(out_dir1 / "sp30_lambda_sweep_synth_raw.json") as f:
+        # Use new v2.0.0 naming convention: sp30_raw.json
+        with open(out_dir1 / "sp30_raw.json") as f:
             data1 = json.load(f)
-        with open(out_dir2 / "sp30_lambda_sweep_synth_raw.json") as f:
+        with open(out_dir2 / "sp30_raw.json") as f:
             data2 = json.load(f)
         
         ssc1 = [r["ssc"] for r in data1["records"]]
