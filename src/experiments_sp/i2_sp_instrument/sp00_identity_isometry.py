@@ -59,7 +59,7 @@ def run_sp00_identity_isometry(
     for trial in range(n_trials):
         # Rotation tests
         for theta_deg in rotations_deg:
-            theta_rad = np.deg2rad(theta_deg)  # 度→ラジアン変換
+            theta_rad = np.deg2rad(theta_deg)
             coords_rot = rotate_2d(base_coords, theta_rad=theta_rad)
             sp = compute_sp_total(base_coords, coords_rot, layout_type=layout)
             
