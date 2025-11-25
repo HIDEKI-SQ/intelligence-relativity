@@ -1,144 +1,114 @@
+"""SP-51: λ Sweep with Grid Layout (BERT Embeddings).
+O-4 Value-Gated Coupling: Grid layout variant with BERT embeddings.
 """
-SP51: Lambda Trade-off with Grid Layout (BERT Embeddings)
-
-Demonstrates SSC↑ and SP↓ trade-off with real BERT embeddings
-starting from structured (grid) layout.
-
-Grid layout (8×7, N=52) with BERT pretrained embeddings.
-Lambda sweep: 0.0, 0.2, 0.4, 0.6, 0.8, 1.0
-Trials: 1000 per lambda
-
-Author: HIDEKI
-Date: 2025-11
-License: MIT
-"""
-
 from __future__ import annotations
 from pathlib import Path
 import numpy as np
 import pandas as pd
-
 from src.core_sp.sp_metrics import compute_sp_total
 from src.core_sp.ssc_wrapper import compute_ssc
 from src.core_sp.value_gate import apply_value_gate
 from src.experiments_sp.bert_utils import load_bert_embeddings
+from src.experiments_sp.utils.save_results import save_experiment_results, compute_statistics
 
 
-def generate_grid_layout_52() -> np.ndarray:
-    """Generate 8x7 grid layout for 52 BERT items."""
-    grid_x = 8
-    grid_y = 7
+def generate_grid_layout_50() -> np.ndarray:
+    """Generate 5x10 grid layout for 50 BERT items."""
     coords = []
-    for i in range(grid_y):
-        for j in range(grid_x):
-            if len(coords) < 52:
-                coords.append([j, i])
+    for i in range(5):
+        for j in range(10):
+            coords.append([float(j), float(i)])
     return np.array(coords, dtype=np.float64)
 
 
-def run_sp51(n_trials: int = 1000):
-    """Run SP51 experiment: BERT embeddings with grid layout."""
+def run_sp51_lambda_tradeoff_grid_bert(
+    n_trials: int = 1000,
+    seed: int = 701,
+    lambda_values: tuple = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
+    out_dir: Path = Path("outputs_sp/sp51_lambda_tradeoff_grid_bert"),
+) -> None:
+    """Test SSC-SP tradeoff with grid layout (BERT embeddings)."""
     
-    # Parameters
-    LAMBDAS = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-    BASE_SEED = 5100
-    
-    # Output directory
-    output_dir = Path("outputs_sp/sp51_lambda_tradeoff_grid_bert")
-    output_dir.mkdir(parents=True, exist_ok=True)
+    rng = np.random.default_rng(seed)
     
     # Load BERT embeddings
     print("Loading BERT embeddings...")
-    bert_data = load_bert_embeddings(seed=BASE_SEED)
-    embeddings = bert_data["embeddings"]
-    n_items = embeddings.shape[0]
+    bert_data = load_bert_embeddings(seed=seed)
+    sem = bert_data["embeddings"]
+    n_items = sem.shape[0]
     
-    print(f"  Loaded {n_items} items with embeddings shape {embeddings.shape}")
+    print(f"  Loaded {n_items} items with embeddings shape {sem.shape}")
     
-    # Generate grid layout (instead of circle)
-    base_coords = generate_grid_layout_52()
+    # Generate grid layout (must match n_items)
+    base_coords = generate_grid_layout_50()
+    layout_type = "grid"
+    
     print(f"  Grid layout: {base_coords.shape}")
     
-    layout_type = "grid"  # Key difference from sp31
+    records = []
     
-    # Storage
-    all_results = []
-    
-    print(f"\nSP51: Grid Layout Lambda Trade-off (BERT)")
-    print(f"N={n_items}, trials={n_trials}")
-    print(f"Lambda values: {LAMBDAS}")
-    print("-" * 60)
-    
-    for lam in LAMBDAS:
-        print(f"\nLambda = {lam:.1f}")
-        
-        lambda_results = []
-        
+    for lam in lambda_values:
+        print(f"  Processing λ={lam}...")
         for trial in range(n_trials):
-            seed = BASE_SEED + trial
-            
-            # Apply value gate (no need for rng here, BERT embeddings are pre-loaded)
-            trans_coords = apply_value_gate(
-                base_coords=base_coords.copy(),
-                embeddings=embeddings,
-                lam=lam,
-                seed=seed,
-                radius=1.0
+            # Apply value gate
+            trial_seed = seed + trial
+            coords_value = apply_value_gate(
+                base_coords, sem, lam, seed=trial_seed, radius=1.0
             )
             
-            # Compute metrics
-            sp_total = compute_sp_total(
-                base_coords=base_coords,
-                trans_coords=trans_coords,
-                layout_type=layout_type
-            )
+            # Compute SP and SSC
+            sp_val = compute_sp_total(base_coords, coords_value, layout_type=layout_type)
+            ssc_val = compute_ssc(sem, coords_value)
             
-            ssc = compute_ssc(
-                embeddings=embeddings,
-                coords=trans_coords
-            )
-            
-            # Store
-            result = {
-                'lambda': lam,
-                'trial': trial,
-                'seed': seed,
-                'sp_total': sp_total,
-                'ssc': ssc
-            }
-            lambda_results.append(result)
-            all_results.append(result)
+            records.append({
+                "lambda": lam,
+                "trial": trial,
+                "sp": sp_val,
+                "ssc": ssc_val
+            })
+    
+    # Compute summary statistics per λ
+    summary_rows = []
+    
+    for lam in lambda_values:
+        lam_records = [r for r in records if r["lambda"] == lam]
         
-        # Summary for this lambda
-        df_lam = pd.DataFrame(lambda_results)
-        mean_sp = df_lam['sp_total'].mean()
-        std_sp = df_lam['sp_total'].std()
-        mean_ssc = df_lam['ssc'].mean()
-        std_ssc = df_lam['ssc'].std()
+        sp_values = [r["sp"] for r in lam_records]
+        ssc_values = [r["ssc"] for r in lam_records]
         
-        print(f"  SP:  {mean_sp:.4f} ± {std_sp:.4f}")
-        print(f"  SSC: {mean_ssc:.4f} ± {std_ssc:.4f}")
+        sp_stats = compute_statistics(sp_values)
+        ssc_stats = compute_statistics(ssc_values)
+        
+        summary_rows.append({
+            "lambda": lam,
+            "n": sp_stats["n"],
+            "sp_mean": sp_stats["mean"],
+            "sp_std": sp_stats["std"],
+            "sp_ci_low": sp_stats["ci_low"],
+            "sp_ci_high": sp_stats["ci_high"],
+            "ssc_mean": ssc_stats["mean"],
+            "ssc_std": ssc_stats["std"],
+            "ssc_ci_low": ssc_stats["ci_low"],
+            "ssc_ci_high": ssc_stats["ci_high"]
+        })
     
-    # Save raw data
-    df_all = pd.DataFrame(all_results)
-    raw_path = output_dir / "sp51_raw.json"
-    df_all.to_json(raw_path, orient='records', indent=2)
-    print(f"\nRaw data saved: {raw_path}")
+    summary_df = pd.DataFrame(summary_rows)
     
-    # Save summary
-    summary = df_all.groupby('lambda').agg({
-        'sp_total': ['mean', 'std'],
-        'ssc': ['mean', 'std']
-    }).reset_index()
-    summary.columns = ['lambda', 'sp_mean', 'sp_std', 'ssc_mean', 'ssc_std']
-    
-    summary_path = output_dir / "sp51_summary.csv"
-    summary.to_csv(summary_path, index=False)
-    print(f"Summary saved: {summary_path}")
-    
-    print("\nSP51 complete!")
-    return summary
+    save_experiment_results(
+        experiment_id="sp51_lambda_tradeoff_grid_bert",
+        version="v2.1.0",
+        parameters={
+            "n_trials": n_trials,
+            "seed": seed,
+            "n_items": n_items,
+            "lambda_values": list(lambda_values),
+            "layout_type": layout_type
+        },
+        records=records,
+        summary_df=summary_df,
+        out_dir=out_dir
+    )
 
 
 if __name__ == "__main__":
-    run_sp51()
+    run_sp51_lambda_tradeoff_grid_bert()
