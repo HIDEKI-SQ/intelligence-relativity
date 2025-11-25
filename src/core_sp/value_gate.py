@@ -1,7 +1,6 @@
 """Tests for value_gate module."""
 import numpy as np
 import pytest
-from src.core_sp.value_gate import apply_value_gate
 from src.core_sp.generators import generate_semantic_embeddings
 
 class TestValueGate:
