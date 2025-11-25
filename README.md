@@ -1,6 +1,6 @@
 # Intelligence Relativity
 
-**Empirical Validation of the Relativity Theory of Intelligence**
+**Empirical Validation of The Projective Theory of Intelligence**
 
 [![Tests](https://github.com/HIDEKI-SQ/intelligence-relativity/actions/workflows/tests.yml/badge.svg)](https://github.com/HIDEKI-SQ/intelligence-relativity/actions/workflows/tests.yml)
 [![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-31019/)
@@ -19,7 +19,7 @@ The framework establishes four fundamental observations:
 - **O-1**: Natural Orthogonality (SSC ≈ 0 at λ=0)
 - **O-2**: Topological Dominance (Phase > Metric)
 - **O-3**: Stress Tolerance (Independent axes)
-- **O-4**: Value-Gated Coupling (λ controls SSC)
+- **O-4**: Value-Gated Coupling (λ controls SSC-SP trade-off)
 
 ### Two Measurement Systems
 
@@ -47,7 +47,7 @@ intelligence-relativity/
 │   ├── core_sp/                   # SP measurement system (v2)
 │   │   ├── sp_metrics.py          # SP computation
 │   │   ├── ssc_wrapper.py         # SSC wrapper
-│   │   ├── value_gate.py          # Value-gated coupling
+│   │   ├── value_gate.py          # Value-gated coupling (PCA-based)
 │   │   ├── generators.py          # Embedding generation
 │   │   ├── topology_ops.py        # Topological operations
 │   │   ├── metric_ops.py          # Metric transformations
@@ -69,25 +69,20 @@ intelligence-relativity/
 │       │   └── ... (4 experiments)
 │       ├── o3_stress_independence_sp_ssc/ # O-3: Independence
 │       │   └── ... (3 experiments)
-│       ├── o4_value_gate_tradeoff_sp/     # O-4: Value gate (random layout)
+│       ├── o4_value_gate_tradeoff_sp/     # O-4: Random layout
 │       │   ├── sp30_lambda_sweep_synth.py
-│       │   └── sp31_lambda_sweep_bert.py
-│       ├── o4_extra_sp/                   # O-4 Extra: Grid layout ✨ NEW
+│       │   └── sp31_lambda_sweep_bert.py  # With word shuffling
+│       ├── o4_extra_sp/                   # O-4 Extra: Grid layout
 │       │   ├── sp50_lambda_tradeoff_grid_synth.py
-│       │   └── sp51_lambda_tradeoff_grid_bert.py
+│       │   └── sp51_lambda_tradeoff_grid_bert.py  # With word shuffling
 │       ├── sp_robustness/                 # Robustness
 │       │   └── ... (3 experiments)
 │       └── generate_summary_all.py        # Summary generation
 │
 ├── demos/                         # Application demos
 │   └── dr_evaluation/             # Dimensionality reduction evaluation
-│       ├── run_dr_demo.py         # Main demo script
-│       ├── load_data.py           # MNIST data loading
-│       ├── apply_dr.py            # t-SNE/UMAP/PCA
-│       ├── compute_metrics.py     # SP/SSC computation
-│       └── visualize_results.py   # Figure generation
 │
-├── tests/                         # Test suite (175 tests)
+├── tests/                         # Test suite (170 tests)
 │   ├── test_core.py              # SSC system tests
 │   ├── test_core_sp/             # SP system tests
 │   ├── test_experiments_sp/      # SP experiment tests
@@ -98,8 +93,8 @@ intelligence-relativity/
 │   ├── summary_all_I2.csv
 │   ├── summary_all_O2.csv
 │   ├── summary_all_O3.csv
-│   ├── summary_all_O4.csv         # Random layout
-│   ├── summary_all_O4_extra.csv   # Grid layout ✨ NEW
+│   ├── summary_all_O4.csv         # Random layout (sp30-sp31)
+│   ├── summary_all_O4_extra.csv   # Grid layout (sp50-sp51)
 │   ├── summary_all_robust.csv
 │   └── env.txt                    # Environment record
 │
@@ -123,6 +118,7 @@ intelligence-relativity/
 - Python 3.10.19
 - NumPy 1.24.3
 - SciPy 1.10.1
+- scikit-learn (for PCA in value gate)
 - (Optional) Transformers + PyTorch for BERT experiments
 - (Optional) umap-learn for dimensionality reduction demos
 
@@ -165,40 +161,28 @@ SP_total: 0.879 ± 0.014
 ✅ High structural preservation confirmed
 ```
 
-### O-4 Extra: Grid Layout Experiments (v2.1.0)
+### O-4: Value-Gated Coupling (v2.1.0)
 ```bash
-# Run grid layout lambda trade-off (synthetic)
-python -m src.experiments_sp.o4_extra_sp.sp50_lambda_tradeoff_grid_synth
+# Random layout (sp30-sp31)
+python -m src.experiments_sp.o4_value_gate_tradeoff_sp.sp30_lambda_sweep_synth
+python -m src.experiments_sp.o4_value_gate_tradeoff_sp.sp31_lambda_sweep_bert
 
-# Run grid layout lambda trade-off (BERT)
+# Grid layout (sp50-sp51)
+python -m src.experiments_sp.o4_extra_sp.sp50_lambda_tradeoff_grid_synth
 python -m src.experiments_sp.o4_extra_sp.sp51_lambda_tradeoff_grid_bert
 ```
 
-**Output:**
-```
-Lambda = 0.0
-  SP:  0.8500 ± 0.0020
-  SSC: 0.0001 ± 0.0002
+**Key Results (Grid Layout, BERT):**
 
-Lambda = 1.0
-  SP:  0.6000 ± 0.0030
-  SSC: 0.1500 ± 0.0040
-```
-
-### Dimensionality Reduction Demo
-```bash
-# Compare t-SNE, UMAP, PCA on MNIST
-python demos/dr_evaluation/run_dr_demo.py
-```
-
-**Output:**
-- `demos/outputs/dr_evaluation/results.csv`
-- `demos/outputs/dr_evaluation/comparison_bar.png`
-- `demos/outputs/dr_evaluation/embeddings_scatter.png`
+| λ | SP | SSC | Interpretation |
+|---|-----|-----|----------------|
+| 0.0 | 0.845 ± 0.000 | 0.002 ± 0.072 | Structure preserved, no coupling |
+| 0.2 | 0.599 ± 0.010 | 0.198 ± 0.079 | Sharp trade-off onset |
+| 1.0 | 0.516 ± 0.017 | 0.521 ± 0.000 | Meaning dominant |
 
 ### Run Tests
 ```bash
-# Run all tests (175 tests)
+# Run all tests (170 tests)
 pytest tests/ -v
 
 # Run specific subsystem
@@ -233,52 +217,33 @@ from src.core_sp import compute_sp_total
 sp = compute_sp_total(
     base_coords=original_coords,
     trans_coords=transformed_coords,
-    layout_type="cluster"
+    layout_type="grid"
 )
 
 # Components: SP_adj (adjacency), SP_ord (order), SP_clu (clustering)
 # Returns: SP_total in [0, 1]
 ```
 
-### Value-Gated Coupling
+### Value-Gated Coupling (v2.1.0)
 
 Control semantic-spatial coupling via λ parameter:
 ```python
 from src.core_sp import apply_value_gate
 
 # Apply value gate to coordinates
+# λ=0: Returns base_coords exactly (structure preserved)
+# λ=1: Returns PCA-projected semantic coordinates (meaning dominant)
+# 0<λ<1: Linear interpolation
+
 coords_gated = apply_value_gate(
     base_coords=coords,
     embeddings=semantic_embeddings,
-    lam=0.5  # 0=no coupling, 1=full coupling
+    lam=0.5,
+    seed=42
 )
 
-# Expected: SSC increases monotonically with λ (O-4)
+# Expected: SSC increases, SP decreases with λ (O-4)
 ```
-
----
-
-## Demos
-
-### Dimensionality Reduction Evaluation
-
-Demonstrates SP and SSC metrics on real data (MNIST):
-
-**What it does:**
-- Loads MNIST subset (configurable size)
-- Applies t-SNE, UMAP, PCA
-- Computes SP and SSC for each method
-- Generates comparison figures
-
-**Example results:**
-
-| Method | SP_total | SSC | Interpretation |
-|--------|----------|-----|----------------|
-| t-SNE  | 0.43     | 0.38 | Strong local structure |
-| UMAP   | 0.27     | 0.35 | Order preservation |
-| PCA    | 0.23     | 0.49 | Global distances only |
-
-**Key finding:** SP and SSC measure independent dimensions—PCA shows lowest SP but highest SSC, confirming that structural preservation and distance correlation are distinct metrics.
 
 ---
 
@@ -291,6 +256,7 @@ All experiments execute with:
 - **Locked dependencies**: Exact versions in `requirements.txt`
 - **Single-threaded BLAS**: Eliminates non-determinism
 - **Environment logging**: Automatic `env.txt` generation
+- **Word shuffling**: BERT experiments use deterministic shuffling for trial variability
 
 ### Example
 ```python
@@ -315,9 +281,9 @@ verify_environment("outputs_sp/env.txt")
 
 ### CI/CD
 
-- **Tests**: Run on every push (175 tests)
+- **Tests**: Run on every push (170 tests)
 - **Experiments**: On-demand via GitHub Actions
-- **Standard deviation**: 0.00 across runs
+- **Standard deviation**: 0.00 across runs (for deterministic operations)
 
 ---
 
@@ -337,9 +303,14 @@ Complete results in `outputs_sp/`:
 - Summary files: `summary_all_*.csv`
 - Environment: `env.txt`
 
-**O-4 Validation:** Two complementary conditions
-- **Random layout** (sp30-sp31): Control for initial structure absence
-- **Grid layout** (sp50-sp51): Demonstrates trade-off from structured baseline
+**O-4 Validation (v2.1.0):**
+
+| Condition | Layout | Embeddings | Key Finding |
+|-----------|--------|------------|-------------|
+| sp30 | Random | Synthetic | Baseline trade-off |
+| sp31 | Random | BERT | Real-world validation |
+| sp50 | Grid | Synthetic | Structured baseline |
+| sp51 | Grid | BERT | **Dramatic trade-off from high SP** |
 
 ---
 
@@ -393,7 +364,7 @@ For collaboration inquiries, feel free to contact via email.
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-**Latest:** v2.1.0 - O-4 Extra experiments (grid layout validation)
+**Latest:** v2.1.0 - Value gate refactoring and word shuffling for BERT experiments
 
 ---
 
