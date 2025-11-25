@@ -10,7 +10,7 @@
 
 ## Overview
 
-This repository contains the complete empirical foundation for **The Projection of Intelligence**, a theoretical framework proposing that:
+This repository contains the complete empirical foundation for **Intelligence Relativity**, a theoretical framework proposing that:
 
 > **Structure (S)**, **Value (V)**, and **Meaning (M)** form a relativistic trinity where meaning emerges as the projection of structure under value illumination.
 
