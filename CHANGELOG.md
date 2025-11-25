@@ -7,25 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [2.1.0] - 2025-11-25
+## [2.1.0] - 2025-11-26
 
 ### Added
 - **O-4 Extra experiments (sp50-sp51)**: Grid layout validation for value-gated coupling
-  - sp50: Lambda trade-off with synthetic embeddings on 8×8 grid layout
-  - sp51: Lambda trade-off with BERT embeddings on 8×7 grid layout
-  - Demonstrates SSC↑ and SP↓ trade-off when starting from structured layouts
-- New experiment series `O4_extra` in `generate_summary_all.py`
-- New workflow option `o4_extra` in `.github/workflows/run_experiments_sp.yml`
+  - sp50: Lambda trade-off with synthetic embeddings on grid layout
+  - sp51: Lambda trade-off with BERT embeddings on grid layout
+  - Demonstrates SSC↑ and SP↓ trade-off from structured baseline
+- **Word shuffling for BERT experiments**: Trial-to-trial variability in sp31/sp51
+  - Models cognitive variability in "which word goes where" decisions
+  - Ensures statistical robustness (std > 0) across n=1000 trials
+- New experiment directory `o4_extra_sp/` with sp50 and sp51
 - Summary file `summary_all_O4_extra.csv` for grid layout experiments
 
 ### Changed
-- Updated workflow timeout from 180 to 240 minutes (4 hours) to accommodate new experiments
-- Workflow now includes o4_extra in `all` and `all_fast` execution modes
+- **value_gate.py**: Refactored to PCA-based implementation
+  - λ=0: Returns base_coords exactly (structure preserved)
+  - λ=1: Returns PCA-projected semantic coordinates (meaning dominant)
+  - 0<λ<1: Linear interpolation between structure and meaning
+  - Supports both circle and grid layouts
+- **sp31_lambda_sweep_bert.py**: Added word shuffling for statistical variability
+- **sp51_lambda_tradeoff_grid_bert.py**: Added word shuffling for statistical variability
+- Updated test suite: Removed deprecated seed isolation test for PCA-based value gate
+- Workflow timeout increased from 180 to 240 minutes
 
-### Purpose
-- Provides contrast to O-4 random layout experiments (sp30-sp31)
-- Shows that value-gating trade-off is robust across initial layout conditions
-- Supports O-4 paper main results with structured baseline
+### Fixed
+- BERT experiment reproducibility: Word shuffling ensures std > 0 while maintaining determinism
+- O-1 consistency: BERT conditions now show appropriate statistical variability
+
+### Technical Notes
+- PCA-based value gate is fully deterministic for same inputs
+- Word shuffling provides trial variability by permuting word-to-position mapping
+- All 170 tests pass with std=0.00 for deterministic operations
 
 ---
 
@@ -133,6 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[2.1.0]: https://github.com/HIDEKI-SQ/intelligence-relativity/releases/tag/v2.1.0
 [2.0.0]: https://github.com/HIDEKI-SQ/intelligence-relativity/releases/tag/v2.0.0
 [1.1.2]: https://github.com/HIDEKI-SQ/intelligence-relativity/releases/tag/v1.1.2
 [1.1.1]: https://github.com/HIDEKI-SQ/intelligence-relativity/releases/tag/v1.1.1
