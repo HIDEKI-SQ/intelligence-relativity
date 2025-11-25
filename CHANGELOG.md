@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.0] - 2025-11-25
+
+### Added
+- **O-4 Extra experiments (sp50-sp51)**: Grid layout validation for value-gated coupling
+  - sp50: Lambda trade-off with synthetic embeddings on 8×8 grid layout
+  - sp51: Lambda trade-off with BERT embeddings on 8×7 grid layout
+  - Demonstrates SSC↑ and SP↓ trade-off when starting from structured layouts
+- New experiment series `O4_extra` in `generate_summary_all.py`
+- New workflow option `o4_extra` in `.github/workflows/run_experiments_sp.yml`
+- Summary file `summary_all_O4_extra.csv` for grid layout experiments
+
+### Changed
+- Updated workflow timeout from 180 to 240 minutes (4 hours) to accommodate new experiments
+- Workflow now includes o4_extra in `all` and `all_fast` execution modes
+
+### Purpose
+- Provides contrast to O-4 random layout experiments (sp30-sp31)
+- Shows that value-gating trade-off is robust across initial layout conditions
+- Supports O-4 paper main results with structured baseline
+
+---
+
 ## [2.0.0] - 2025-11-22
 
 ### Added
