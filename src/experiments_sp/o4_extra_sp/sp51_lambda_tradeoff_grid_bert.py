@@ -77,10 +77,7 @@ def run_sp51(n_trials: int = 1000):
         for trial in range(n_trials):
             seed = BASE_SEED + trial
             
-            # Set random seed for reproducibility
-            np.random.seed(seed)
-            
-            # Apply value gate
+            # Apply value gate (no need for rng here, BERT embeddings are pre-loaded)
             trans_coords = apply_value_gate(
                 base_coords=base_coords.copy(),
                 embeddings=embeddings,
