@@ -142,21 +142,21 @@ jobs:
         inputs.experiment_set == 'all'
       run: |
         python -c "
-        from src.experiments_sp.o4_extra_sp.sp50_lambda_tradeoff_grid_synth import run_sp50
+        from src.experiments_sp.o4_extra_sp.sp50_lambda_tradeoff_grid_synth import run_sp50_lambda_tradeoff_grid_synth
         n_trials = ${{ inputs.n_trials }}
         print(f'🆕 Running O-4 Extra (GRID layout, synthetic) with n_trials={n_trials}')
-        run_sp50()
+        run_sp50_lambda_tradeoff_grid_synth(n_trials=n_trials)
         "
     
     - name: Run O-4 Extra experiments (GRID layout, BERT) 🆕 v2.1.0 ⚠️ SLOW
       if: inputs.experiment_set == 'o4_extra' || inputs.experiment_set == 'all'
       run: |
         python -c "
-        from src.experiments_sp.o4_extra_sp.sp51_lambda_tradeoff_grid_bert import run_sp51
+        from src.experiments_sp.o4_extra_sp.sp51_lambda_tradeoff_grid_bert import run_sp51_lambda_tradeoff_grid_bert
         n_trials = ${{ inputs.n_trials }}
         print(f'🆕 Running O-4 Extra (GRID layout, BERT) with n_trials={n_trials}')
         print(f'⚠️  This may take 10-30 minutes or longer...')
-        run_sp51()
+        run_sp51_lambda_tradeoff_grid_bert(n_trials=n_trials)
         "
     
     - name: Run Robustness experiments
@@ -208,3 +208,22 @@ jobs:
             echo "- $(basename $f): $(wc -l < $f) rows" >> $GITHUB_STEP_SUMMARY
           done
         fi
+```
+
+---
+
+## ✅ **修正完了！3ファイル置き換えてください**
+
+### 1. YML（上記）
+```
+Commit message: Fix YML: Correct function names and pass n_trials for o4_extra
+```
+
+### 2. sp50（前のメッセージのコード）
+```
+Commit message: Fix sp50: Use existing pattern with save_experiment_results
+```
+
+### 3. sp51（前のメッセージのコード）
+```
+Commit message: Fix sp51: Use 5x10 grid for 50 BERT items
