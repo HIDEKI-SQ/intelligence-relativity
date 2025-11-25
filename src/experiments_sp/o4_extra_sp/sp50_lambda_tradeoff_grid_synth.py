@@ -61,11 +61,11 @@ def run_sp50(n_trials: int = 1000):
         for trial in range(n_trials):
             seed = BASE_SEED + trial
             
-            # Set random seed for reproducibility
-            np.random.seed(seed)
+            # Create random number generator
+            rng = np.random.default_rng(seed)
             
             # Generate semantic embeddings
-            embeddings = generate_semantic_embeddings(N, D)
+            embeddings = generate_semantic_embeddings(N, D, rng)
             
             # Apply value gate
             trans_coords = apply_value_gate(
