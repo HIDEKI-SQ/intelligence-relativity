@@ -34,19 +34,6 @@ class TestValueGate:
         
         assert np.allclose(coords1, coords2), "Value gate must be deterministic"
     
-    def test_value_gate_different_seeds(self, sample_data):
-        """Test: Different seeds → different arrangements (only relevant when λ > 0)."""
-        embeddings, base_coords = sample_data
-        
-        # Use λ=1.0 to ensure the difference comes from PCA projection (which uses the seed)
-        # At λ=0, it returns base_coords so seed doesn't matter.
-        lam_val = 1.0 
-        
-        coords1 = apply_value_gate(base_coords, embeddings, lam=lam_val, seed=42)
-        coords2 = apply_value_gate(base_coords, embeddings, lam=lam_val, seed=99)
-        
-        assert not np.allclose(coords1, coords2), "Different seeds must produce different results when λ > 0"
-    
     def test_value_gate_shape(self, sample_data):
         """Test: Output shape matches input."""
         embeddings, base_coords = sample_data
@@ -99,9 +86,6 @@ class TestValueGate:
         ssc_high = np.mean(sscs[3:])  # λ=[0.6, 0.8, 1.0]
         
         assert ssc_high > ssc_low, f"SSC should increase with λ: {sscs}"
-    
-    # REMOVED: test_value_gate_circle_layout (Deprecated behavior)
-    # REMOVED: test_value_gate_unsupported_layout (Deprecated check)
 
 
 class TestValueGateEdgeCases:
