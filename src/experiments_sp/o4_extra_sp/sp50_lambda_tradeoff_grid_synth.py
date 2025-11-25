@@ -16,7 +16,6 @@ from src.core_sp.generators import generate_semantic_embeddings
 from src.core_sp.value_gate import apply_value_gate
 from src.core_sp.sp_metrics import compute_sp_total
 from src.core_sp.ssc_wrapper import compute_ssc
-from src.core_sp.deterministic import set_seed
 
 
 def generate_grid_layout(n_items: int = 64) -> np.ndarray:
@@ -61,7 +60,6 @@ def run_sp50():
         
         for trial in range(N_TRIALS):
             seed = BASE_SEED + trial
-            set_seed(seed)
             
             # Generate semantic embeddings
             embeddings = generate_semantic_embeddings(N, D, seed=seed)
