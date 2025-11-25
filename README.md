@@ -44,7 +44,7 @@ intelligence-relativity/
 │   │   ├── generators.py          # Data generation
 │   │   └── statistics.py          # Statistical tools
 │   │
-│   ├── core_sp/                   # SP measurement system (v2) ✨ NEW
+│   ├── core_sp/                   # SP measurement system (v2)
 │   │   ├── sp_metrics.py          # SP computation
 │   │   ├── ssc_wrapper.py         # SSC wrapper
 │   │   ├── value_gate.py          # Value-gated coupling
@@ -59,7 +59,7 @@ intelligence-relativity/
 │   │   ├── sup_exp_14_bert.py             # BERT validation
 │   │   └── ... (17 experiments total)
 │   │
-│   └── experiments_sp/            # SP experiments (v2) ✨ NEW
+│   └── experiments_sp/            # SP experiments (v2)
 │       ├── i2_sp_instrument/              # I-2: Measurement system
 │       │   ├── sp00_identity_isometry.py
 │       │   ├── sp01_full_destruction.py
@@ -69,13 +69,17 @@ intelligence-relativity/
 │       │   └── ... (4 experiments)
 │       ├── o3_stress_independence_sp_ssc/ # O-3: Independence
 │       │   └── ... (3 experiments)
-│       ├── o4_value_gate_tradeoff_sp/     # O-4: Value gate
-│       │   └── ... (2 experiments)
+│       ├── o4_value_gate_tradeoff_sp/     # O-4: Value gate (random layout)
+│       │   ├── sp30_lambda_sweep_synth.py
+│       │   └── sp31_lambda_sweep_bert.py
+│       ├── o4_extra_sp/                   # O-4 Extra: Grid layout ✨ NEW
+│       │   ├── sp50_lambda_tradeoff_grid_synth.py
+│       │   └── sp51_lambda_tradeoff_grid_bert.py
 │       ├── sp_robustness/                 # Robustness
 │       │   └── ... (3 experiments)
 │       └── generate_summary_all.py        # Summary generation
 │
-├── demos/                         # Application demos ✨ NEW
+├── demos/                         # Application demos
 │   └── dr_evaluation/             # Dimensionality reduction evaluation
 │       ├── run_dr_demo.py         # Main demo script
 │       ├── load_data.py           # MNIST data loading
@@ -85,27 +89,28 @@ intelligence-relativity/
 │
 ├── tests/                         # Test suite (175 tests)
 │   ├── test_core.py              # SSC system tests
-│   ├── test_core_sp/             # SP system tests ✨ NEW
-│   ├── test_experiments_sp/      # SP experiment tests ✨ NEW
+│   ├── test_core_sp/             # SP system tests
+│   ├── test_experiments_sp/      # SP experiment tests
 │   └── test_integration/         # Integration tests
 │
 ├── outputs/                       # v1 experiment results
-├── outputs_sp/                    # v2 experiment results ✨ NEW
+├── outputs_sp/                    # v2 experiment results
 │   ├── summary_all_I2.csv
 │   ├── summary_all_O2.csv
 │   ├── summary_all_O3.csv
-│   ├── summary_all_O4.csv
+│   ├── summary_all_O4.csv         # Random layout
+│   ├── summary_all_O4_extra.csv   # Grid layout ✨ NEW
 │   ├── summary_all_robust.csv
 │   └── env.txt                    # Environment record
 │
 ├── .github/workflows/
 │   ├── tests.yml                 # CI testing
 │   ├── run_experiments.yml       # v1 experiments
-│   ├── run_experiments_sp.yml    # v2 experiments ✨ NEW
-│   └── test_demo.yml             # Demo testing ✨ NEW
+│   ├── run_experiments_sp.yml    # v2 experiments
+│   └── test_demo.yml             # Demo testing
 │
 ├── requirements.txt              # Unified dependencies
-├── CHANGELOG.md                  # Version history ✨ NEW
+├── CHANGELOG.md                  # Version history
 └── README.md                     # This file
 ```
 
@@ -158,6 +163,26 @@ python -m src.experiments_sp.i2_sp_instrument.sp00_identity_isometry
 ```
 SP_total: 0.879 ± 0.014
 ✅ High structural preservation confirmed
+```
+
+### O-4 Extra: Grid Layout Experiments (v2.1.0)
+```bash
+# Run grid layout lambda trade-off (synthetic)
+python -m src.experiments_sp.o4_extra_sp.sp50_lambda_tradeoff_grid_synth
+
+# Run grid layout lambda trade-off (BERT)
+python -m src.experiments_sp.o4_extra_sp.sp51_lambda_tradeoff_grid_bert
+```
+
+**Output:**
+```
+Lambda = 0.0
+  SP:  0.8500 ± 0.0020
+  SSC: 0.0001 ± 0.0002
+
+Lambda = 1.0
+  SP:  0.6000 ± 0.0030
+  SSC: 0.1500 ± 0.0040
 ```
 
 ### Dimensionality Reduction Demo
@@ -308,9 +333,13 @@ Complete results in `outputs/`:
 ### v2 (SP System)
 
 Complete results in `outputs_sp/`:
-- 16 experiments (I-2, O-2, O-3, O-4, Robustness)
+- 18 experiments (I-2, O-2, O-3, O-4, O-4 Extra, Robustness)
 - Summary files: `summary_all_*.csv`
 - Environment: `env.txt`
+
+**O-4 Validation:** Two complementary conditions
+- **Random layout** (sp30-sp31): Control for initial structure absence
+- **Grid layout** (sp50-sp51): Demonstrates trade-off from structured baseline
 
 ---
 
@@ -319,7 +348,7 @@ Complete results in `outputs_sp/`:
 @software{intelligence_relativity_2025,
   author = {Hideki},
   title = {Intelligence Relativity: Empirical Validation},
-  version = {2.0.0},
+  version = {2.1.0},
   year = {2025},
   url = {https://github.com/HIDEKI-SQ/intelligence-relativity},
   note = {Complete validation framework for SSC and SP measurement systems}
@@ -349,7 +378,7 @@ This repository contains validated measurement systems. For extensions:
 ## Contact
 
 **Author**: Hideki  
-**Email**: hideki@r3776.jp
+**Email**: hideki@r3776.jp  
 **GitHub**: [@HIDEKI-SQ](https://github.com/HIDEKI-SQ)  
 **Repository**: https://github.com/HIDEKI-SQ/intelligence-relativity  
 
@@ -357,13 +386,14 @@ For questions or bug reports, please open an [issue](https://github.com/HIDEKI-S
 For collaboration inquiries, feel free to contact via email.
 
 **Framework**: Relativity Theory of Intelligence
+
 ---
 
 ## Version History
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-**Latest:** v2.0.0 - SP (Structural Preservation) measurement system
+**Latest:** v2.1.0 - O-4 Extra experiments (grid layout validation)
 
 ---
 
