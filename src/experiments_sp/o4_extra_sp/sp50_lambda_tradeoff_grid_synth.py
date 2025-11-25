@@ -10,17 +10,8 @@ from src.core_sp.sp_metrics import compute_sp_total
 from src.core_sp.ssc_wrapper import compute_ssc
 from src.core_sp.value_gate import apply_value_gate
 from src.core_sp.generators import generate_semantic_embeddings
+from src.experiments_sp.i2_sp_instrument.sp00_identity_isometry import make_grid_layout
 from src.experiments_sp.utils.save_results import save_experiment_results, compute_statistics
-
-
-def generate_grid_layout(n_items: int = 64) -> np.ndarray:
-    """Generate 8x8 grid layout."""
-    grid_size = int(np.sqrt(n_items))
-    coords = []
-    for i in range(grid_size):
-        for j in range(grid_size):
-            coords.append([float(j), float(i)])
-    return np.array(coords, dtype=np.float64)
 
 
 def run_sp50_lambda_tradeoff_grid_synth(
@@ -37,8 +28,8 @@ def run_sp50_lambda_tradeoff_grid_synth(
     n_items = 64
     d_embedding = 128
     
-    # Generate grid layout
-    base_coords = generate_grid_layout(n_items)
+    # Generate grid layout - SAME AS sp30
+    base_coords = make_grid_layout(n_side=8)
     layout_type = "grid"
     
     print(f"  Grid layout: {base_coords.shape}")
@@ -50,11 +41,10 @@ def run_sp50_lambda_tradeoff_grid_synth(
         print(f"  Processing λ={lam}...")
         for trial in range(n_trials):
             # Generate synthetic embeddings
-            trial_seed = seed + trial
-            trial_rng = np.random.default_rng(trial_seed)
-            sem = generate_semantic_embeddings(n_items, d_embedding, trial_rng)
+            sem = generate_semantic_embeddings(n_items, d_embedding, rng)
             
             # Apply value gate
+            trial_seed = seed + trial
             coords_value = apply_value_gate(
                 base_coords, sem, lam, seed=trial_seed, radius=1.0
             )
