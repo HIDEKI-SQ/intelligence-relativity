@@ -22,7 +22,6 @@ from src.core_sp.sp_metrics import compute_sp_total
 from src.core_sp.ssc_wrapper import compute_ssc
 from src.core_sp.value_gate import apply_value_gate
 from src.experiments_sp.bert_utils import load_bert_embeddings
-from src.core_sp.deterministic import set_seed
 
 
 def generate_grid_layout_52() -> np.ndarray:
@@ -78,7 +77,6 @@ def run_sp51():
         
         for trial in range(N_TRIALS):
             seed = BASE_SEED + trial
-            set_seed(seed)
             
             # Apply value gate
             trans_coords = apply_value_gate(
