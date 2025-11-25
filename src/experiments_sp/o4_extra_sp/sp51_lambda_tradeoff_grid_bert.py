@@ -36,11 +36,10 @@ def generate_grid_layout_52() -> np.ndarray:
     return np.array(coords, dtype=np.float64)
 
 
-def run_sp51():
+def run_sp51(n_trials: int = 1000):
     """Run SP51 experiment: BERT embeddings with grid layout."""
     
     # Parameters
-    N_TRIALS = 1000
     LAMBDAS = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     BASE_SEED = 5100
     
@@ -66,7 +65,7 @@ def run_sp51():
     all_results = []
     
     print(f"\nSP51: Grid Layout Lambda Trade-off (BERT)")
-    print(f"N={n_items}, trials={N_TRIALS}")
+    print(f"N={n_items}, trials={n_trials}")
     print(f"Lambda values: {LAMBDAS}")
     print("-" * 60)
     
@@ -75,8 +74,11 @@ def run_sp51():
         
         lambda_results = []
         
-        for trial in range(N_TRIALS):
+        for trial in range(n_trials):
             seed = BASE_SEED + trial
+            
+            # Set random seed for reproducibility
+            np.random.seed(seed)
             
             # Apply value gate
             trans_coords = apply_value_gate(
