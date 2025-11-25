@@ -1,8 +1,8 @@
 """Tests for value gate mechanism.
 
 Validates:
-    - λ=0 → random arrangement
-    - λ=1 → semantic alignment
+    - λ=0 → returns base_coords (Structure preserved)
+    - λ=1 → semantic alignment (Meaning dominant)
     - Determinism with seed
     - Monotonic SSC increase with λ
 """
@@ -35,13 +35,17 @@ class TestValueGate:
         assert np.allclose(coords1, coords2), "Value gate must be deterministic"
     
     def test_value_gate_different_seeds(self, sample_data):
-        """Test: Different seeds → different arrangements."""
+        """Test: Different seeds → different arrangements (only relevant when λ > 0)."""
         embeddings, base_coords = sample_data
         
-        coords1 = apply_value_gate(base_coords, embeddings, lam=0.5, seed=42)
-        coords2 = apply_value_gate(base_coords, embeddings, lam=0.5, seed=99)
+        # Use λ=1.0 to ensure the difference comes from PCA projection (which uses the seed)
+        # At λ=0, it returns base_coords so seed doesn't matter.
+        lam_val = 1.0 
         
-        assert not np.allclose(coords1, coords2), "Different seeds must produce different results"
+        coords1 = apply_value_gate(base_coords, embeddings, lam=lam_val, seed=42)
+        coords2 = apply_value_gate(base_coords, embeddings, lam=lam_val, seed=99)
+        
+        assert not np.allclose(coords1, coords2), "Different seeds must produce different results when λ > 0"
     
     def test_value_gate_shape(self, sample_data):
         """Test: Output shape matches input."""
@@ -61,27 +65,25 @@ class TestValueGate:
             assert np.all(np.isfinite(coords)), f"Invalid coords at λ={lam}"
     
     def test_value_gate_lambda0_randomness(self, sample_data):
-        """Test: λ=0 → arrangement independent of semantics."""
+        """Test: λ=0 → returns base_coords exactly (Structure Preserved)."""
         embeddings, base_coords = sample_data
         rng = np.random.default_rng(42)
         
-        # Generate different embeddings
+        # Even with different embeddings, λ=0 should return the original base_coords
         embeddings2 = generate_semantic_embeddings(20, 100, rng)
         
         coords1 = apply_value_gate(base_coords, embeddings, lam=0.0, seed=42)
         coords2 = apply_value_gate(base_coords, embeddings2, lam=0.0, seed=42)
         
-        # At λ=0, arrangement should be similar (random component dominates)
-        # But not identical due to greedy TSP on random distances
-        # We just check they're both valid
-        assert np.all(np.isfinite(coords1))
-        assert np.all(np.isfinite(coords2))
+        assert np.allclose(coords1, base_coords), "λ=0 must return base_coords exactly"
+        assert np.allclose(coords2, base_coords), "λ=0 must return base_coords exactly"
     
     def test_value_gate_monotonic_ssc(self):
         """Test: λ ↑ → SSC ↑ (monotonic coupling, O-4)."""
         rng = np.random.default_rng(42)
-        embeddings = generate_semantic_embeddings(20, 100, rng)
-        base_coords = rng.uniform(-1, 1, (20, 2))
+        embeddings = generate_semantic_embeddings(50, 100, rng)
+        # Start with random base coords (low SSC)
+        base_coords = rng.uniform(-1, 1, (50, 2))
         
         lambdas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
         sscs = []
@@ -98,22 +100,8 @@ class TestValueGate:
         
         assert ssc_high > ssc_low, f"SSC should increase with λ: {sscs}"
     
-    def test_value_gate_circle_layout(self, sample_data):
-        """Test: Circle layout produces coordinates on circle."""
-        embeddings, base_coords = sample_data
-        
-        coords = apply_value_gate(base_coords, embeddings, lam=0.5, seed=42, radius=2.0)
-        
-        # Check points are approximately on circle of radius 2.0
-        distances = np.linalg.norm(coords, axis=1)
-        assert np.allclose(distances, 2.0, atol=1e-10), "Points should be on circle"
-    
-    def test_value_gate_unsupported_layout(self, sample_data):
-        """Test: Unsupported layout raises error."""
-        embeddings, base_coords = sample_data
-        
-        with pytest.raises(NotImplementedError):
-            apply_value_gate(base_coords, embeddings, lam=0.5, seed=42, layout='grid')
+    # REMOVED: test_value_gate_circle_layout (Deprecated behavior)
+    # REMOVED: test_value_gate_unsupported_layout (Deprecated check)
 
 
 class TestValueGateEdgeCases:
