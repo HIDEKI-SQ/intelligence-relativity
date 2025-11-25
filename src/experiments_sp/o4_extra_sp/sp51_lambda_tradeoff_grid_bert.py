@@ -9,16 +9,8 @@ from src.core_sp.sp_metrics import compute_sp_total
 from src.core_sp.ssc_wrapper import compute_ssc
 from src.core_sp.value_gate import apply_value_gate
 from src.experiments_sp.bert_utils import load_bert_embeddings
+from src.experiments_sp.i2_sp_instrument.sp00_identity_isometry import make_grid_layout
 from src.experiments_sp.utils.save_results import save_experiment_results, compute_statistics
-
-
-def generate_grid_layout_50() -> np.ndarray:
-    """Generate 5x10 grid layout for 50 BERT items."""
-    coords = []
-    for i in range(5):
-        for j in range(10):
-            coords.append([float(j), float(i)])
-    return np.array(coords, dtype=np.float64)
 
 
 def run_sp51_lambda_tradeoff_grid_bert(
@@ -39,8 +31,20 @@ def run_sp51_lambda_tradeoff_grid_bert(
     
     print(f"  Loaded {n_items} items with embeddings shape {sem.shape}")
     
-    # Generate grid layout (must match n_items)
-    base_coords = generate_grid_layout_50()
+    # Generate grid layout - use appropriate size for BERT (50 items = 7x7 + 1)
+    # But to match grid structure, use closest square: 7x7=49, 8x8=64
+    # Since BERT has 50 items, we'll use a partial grid
+    if n_items == 50:
+        # 7x8 = 56, use first 50 positions
+        base_coords = make_grid_layout(n_side=7)  # 7x7 = 49
+        # Add one more row position
+        extra = np.array([[0.0, 7.0]], dtype=np.float64)
+        base_coords = np.vstack([base_coords, extra])
+    else:
+        # fallback: use square grid
+        n_side = int(np.ceil(np.sqrt(n_items)))
+        base_coords = make_grid_layout(n_side=n_side)[:n_items]
+    
     layout_type = "grid"
     
     print(f"  Grid layout: {base_coords.shape}")
