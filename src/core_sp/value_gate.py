@@ -1,110 +1,67 @@
-"""Tests for value_gate module."""
+"""Value gate mechanism for O-4 experiments.
+
+This module provides the value-gated coupling mechanism that increases
+SSC by modulating spatial arrangement based on semantic similarity.
+"""
+
 import numpy as np
-import pytest
-from src.core_sp.generators import generate_semantic_embeddings
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import MinMaxScaler
 
-class TestValueGate:
-    """Test apply_value_gate function."""
-
-    def test_value_gate_determinism(self):
-        """Test that results are deterministic with fixed seed."""
-        n_items = 20
-        dim = 10
-        rng = np.random.default_rng(42)
-        base_coords = rng.uniform(-1, 1, (n_items, 2))
-        embeddings = generate_semantic_embeddings(n_items, dim, rng)
-        
-        # Run twice with same parameters
-        coords1 = apply_value_gate(base_coords, embeddings, lam=0.5, seed=123)
-        coords2 = apply_value_gate(base_coords, embeddings, lam=0.5, seed=123)
-        
-        assert np.allclose(coords1, coords2), "Deterministic execution failed"
-
-    def test_value_gate_different_seeds(self):
-        """Test that different seeds produce different results (when lambda > 0)."""
-        n_items = 20
-        dim = 10
-        rng = np.random.default_rng(42)
-        base_coords = rng.uniform(-1, 1, (n_items, 2))
-        embeddings = generate_semantic_embeddings(n_items, dim, rng)
-        
-        # Run with different seeds, lambda > 0 to ensure PCA diff matters
-        coords1 = apply_value_gate(base_coords, embeddings, lam=0.5, seed=123)
-        coords2 = apply_value_gate(base_coords, embeddings, lam=0.5, seed=456)
-        
-        assert not np.allclose(coords1, coords2), "Different seeds must produce different results"
-
-    def test_value_gate_shape(self):
-        """Test output shape matches input base_coords."""
-        n_items = 15
-        dim = 8
-        rng = np.random.default_rng(42)
-        base_coords = rng.uniform(-1, 1, (n_items, 2))
-        embeddings = generate_semantic_embeddings(n_items, dim, rng)
-        
-        coords = apply_value_gate(base_coords, embeddings, lam=0.5)
-        assert coords.shape == base_coords.shape
-
-    def test_value_gate_lambda_range(self):
-        """Test lambda=0 returns base_coords and lambda=1 returns something else."""
-        n_items = 20
-        dim = 10
-        rng = np.random.default_rng(42)
-        base_coords = rng.uniform(-1, 1, (n_items, 2))
-        embeddings = generate_semantic_embeddings(n_items, dim, rng)
-        
-        # lambda=0 -> exactly base_coords
-        coords0 = apply_value_gate(base_coords, embeddings, lam=0.0)
-        assert np.allclose(coords0, base_coords), "lambda=0 should return base_coords exactly"
-        
-        # lambda=1 -> purely semantic projection
-        coords1 = apply_value_gate(base_coords, embeddings, lam=1.0)
-        assert not np.allclose(coords1, base_coords), "lambda=1 should differ from base_coords"
-
-    def test_value_gate_monotonic_ssc(self):
-        """
-        Test that SSC tends to increase with lambda.
-        Note: This is a stochastic property, so we check a clear trend 
-        or just that 1.0 > 0.0 is likely.
-        For a unit test, checking determinism/shape is more important,
-        but let's check end-points.
-        """
-        from src.core_sp.ssc_wrapper import compute_ssc
-        
-        n_items = 50
-        dim = 32
-        rng = np.random.default_rng(999)
-        base_coords = rng.uniform(-1, 1, (n_items, 2)) # Random layout -> SSC~0
-        embeddings = generate_semantic_embeddings(n_items, dim, rng)
-        
-        coords0 = apply_value_gate(base_coords, embeddings, lam=0.0, seed=42)
-        ssc0 = compute_ssc(embeddings, coords0)
-        
-        coords1 = apply_value_gate(base_coords, embeddings, lam=1.0, seed=42)
-        ssc1 = compute_ssc(embeddings, coords1)
-        
-        # With lambda=1, layout reflects semantic structure -> SSC should be higher
-        assert ssc1 > ssc0, f"SSC should increase: {ssc0} -> {ssc1}"
-
-class TestValueGateEdgeCases:
-    """Edge cases for value gate."""
+def apply_value_gate(
+    base_coords: np.ndarray,
+    embeddings: np.ndarray,
+    lam: float,
+    seed: int = 42,
+    radius: float = 1.0,
+    layout: str = 'grid'
+) -> np.ndarray:
+    """
+    Apply value gate parameter λ to arrange items spatially.
     
-    def test_value_gate_small_n(self):
-        n_items = 3 # Minimal for correlation
-        dim = 5
-        rng = np.random.default_rng(42)
-        base_coords = rng.uniform(0, 1, (n_items, 2))
-        embeddings = generate_semantic_embeddings(n_items, dim, rng)
-        
-        coords = apply_value_gate(base_coords, embeddings, lam=0.5)
-        assert coords.shape == (3, 2)
+    Now supports morphing from a structured base_layout (e.g., grid)
+    to a semantic layout via linear interpolation.
 
-    def test_value_gate_large_dim(self):
-        n_items = 10
-        dim = 512 # Large embedding dim
-        rng = np.random.default_rng(42)
-        base_coords = rng.uniform(0, 1, (n_items, 2))
-        embeddings = generate_semantic_embeddings(n_items, dim, rng)
-        
-        coords = apply_value_gate(base_coords, embeddings, lam=0.5)
-        assert coords.shape == (10, 2)
+    λ=0: Returns base_coords exactly (Structure preserved).
+    λ=1: Returns PCA-projected semantic coordinates (Meaning dominant).
+    0<λ<1: Linear interpolation between Structure and Meaning.
+
+    Parameters
+    ----------
+    base_coords : ndarray, shape (n_items, 2)
+        Base coordinates (e.g., 8x8 grid). 
+        MUST be provided and determines the starting structure at λ=0.
+    embeddings : ndarray, shape (n_items, dim)
+        Semantic embeddings.
+    lam : float in [0, 1]
+        Value gate parameter.
+    seed : int
+        Random seed (used for PCA projection).
+    radius : float
+        (Deprecated in this logic but kept for compatibility).
+    layout : str
+        (Deprecated in this logic but kept for compatibility).
+
+    Returns
+    -------
+    coords_gated : ndarray, shape (n_items, 2)
+        Spatially arranged coordinates under value gate.
+    """
+    if lam == 0.0:
+        return base_coords.copy()
+
+    pca = PCA(n_components=2, random_state=seed)
+    coords_sem_raw = pca.fit_transform(embeddings)
+
+    min_base = np.min(base_coords, axis=0)
+    max_base = np.max(base_coords, axis=0)
+    
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    coords_sem_norm = scaler.fit_transform(coords_sem_raw)
+    
+    range_base = max_base - min_base
+    coords_sem_scaled = coords_sem_norm * range_base + min_base
+
+    coords_gated = (1 - lam) * base_coords + lam * coords_sem_scaled
+
+    return coords_gated
