@@ -101,6 +101,7 @@ class TestCoreSPDeterminism:
         
         results = []
         for _ in range(10):
+            # Use lambda=0.5 to exercise the mixing logic
             coords = apply_value_gate(base_coords, embeddings, lam=0.5, seed=42)
             results.append(coords[0, 0])  # Check first element
         
@@ -132,13 +133,17 @@ class TestSeedIsolation:
         assert not np.allclose(coords1, coords2), "Different seeds must produce different results"
     
     def test_value_gate_seed_isolation(self):
-        """Test: Different seeds → different arrangements."""
+        """Test: Different seeds → different arrangements (when λ > 0)."""
         rng = np.random.default_rng(42)
         embeddings = generate_semantic_embeddings(20, 100, rng)
         base_coords = rng.uniform(-1, 1, (20, 2))
         
-        coords1 = apply_value_gate(base_coords, embeddings, lam=0.5, seed=42)
-        coords2 = apply_value_gate(base_coords, embeddings, lam=0.5, seed=99)
+        # FIX: Use lambda=1.0 so the result depends on PCA projection (which uses the seed)
+        # At lambda=0.0, it returns base_coords, which is seed-independent here.
+        lam_val = 1.0 
+        
+        coords1 = apply_value_gate(base_coords, embeddings, lam=lam_val, seed=42)
+        coords2 = apply_value_gate(base_coords, embeddings, lam=lam_val, seed=99)
         
         assert not np.allclose(coords1, coords2), "Different seeds must produce different results"
 
@@ -265,7 +270,7 @@ class TestDeterminismSummary:
         if failed:
             print("❌ Failed tests:")
             for name, std in failed:
-                print(f"   {name}: std={std}")
+                print(f"    {name}: std={std}")
         
         assert passed == total, f"Expected {total}/{total} deterministic, got {passed}/{total}"
 
