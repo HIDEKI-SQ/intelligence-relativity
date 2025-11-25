@@ -14,6 +14,7 @@ Date: 2025-11
 License: MIT
 """
 from __future__ import annotations
+
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -43,6 +44,12 @@ def run_sp31_lambda_sweep_bert(
         Value gate parameters to test
     out_dir : Path
         Output directory
+    
+    Notes
+    -----
+    Word shuffling is applied to create trial-to-trial variability.
+    This models the cognitive variability in "which word goes where"
+    when constructing a memory palace, while keeping the same word set.
     """
     rng = np.random.default_rng(seed)
     
@@ -62,15 +69,24 @@ def run_sp31_lambda_sweep_bert(
     for lam in lambda_values:
         print(f"  Processing λ={lam}...")
         for trial in range(n_trials):
+            # Word shuffling: vary which word goes to which position
+            # This creates trial-to-trial variability while keeping the same word set
+            shuffle_seed = seed + 1000000 + trial
+            shuffle_rng = np.random.default_rng(shuffle_seed)
+            word_order = shuffle_rng.permutation(n_items)
+            
+            # Shuffled semantic embeddings for this trial
+            sem_trial = sem[word_order]
+            
             # Apply value gate to create λ-modulated coordinates
             trial_seed = seed + trial
             coords_value = apply_value_gate(
-                base_coords, sem, lam, seed=trial_seed, radius=1.0
+                base_coords, sem_trial, lam, seed=trial_seed, radius=1.0
             )
             
             # Compute SP and SSC
             sp_val = compute_sp_total(base_coords, coords_value, layout_type=layout_type)
-            ssc_val = compute_ssc(sem, coords_value)
+            ssc_val = compute_ssc(sem_trial, coords_value)
             
             records.append({
                 "lambda": lam,
@@ -108,12 +124,14 @@ def run_sp31_lambda_sweep_bert(
     
     save_experiment_results(
         experiment_id="sp31_lambda_sweep_bert",
-        version="v2.0.0",
+        version="v2.1.0",
         parameters={
             "n_trials": n_trials,
             "seed": seed,
             "n_items": n_items,
-            "lambda_values": list(lambda_values)
+            "lambda_values": list(lambda_values),
+            "layout_type": layout_type,
+            "word_shuffling": True
         },
         records=records,
         summary_df=summary_df,
