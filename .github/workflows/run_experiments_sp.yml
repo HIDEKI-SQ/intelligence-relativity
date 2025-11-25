@@ -208,22 +208,3 @@ jobs:
             echo "- $(basename $f): $(wc -l < $f) rows" >> $GITHUB_STEP_SUMMARY
           done
         fi
-```
-
----
-
-## ✅ **修正完了！3ファイル置き換えてください**
-
-### 1. YML（上記）
-```
-Commit message: Fix YML: Correct function names and pass n_trials for o4_extra
-```
-
-### 2. sp50（前のメッセージのコード）
-```
-Commit message: Fix sp50: Use existing pattern with save_experiment_results
-```
-
-### 3. sp51（前のメッセージのコード）
-```
-Commit message: Fix sp51: Use 5x10 grid for 50 BERT items
