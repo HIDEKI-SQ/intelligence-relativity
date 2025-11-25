@@ -10,7 +10,6 @@ Trials: 1000 per lambda
 import numpy as np
 import pandas as pd
 from pathlib import Path
-import json
 
 from src.core_sp.generators import generate_semantic_embeddings
 from src.core_sp.value_gate import apply_value_gate
@@ -28,14 +27,13 @@ def generate_grid_layout(n_items: int = 64) -> np.ndarray:
     return np.array(coords, dtype=np.float64)
 
 
-def run_sp50():
+def run_sp50(n_trials: int = 1000):
     """Run SP50 experiment."""
     
     # Parameters
     N = 64
     D = 128
     LAMBDAS = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-    N_TRIALS = 1000
     BASE_SEED = 5000
     
     # Output directory
@@ -45,11 +43,13 @@ def run_sp50():
     # Generate base grid layout
     base_coords = generate_grid_layout(N)
     
+    layout_type = "grid"
+    
     # Storage
     all_results = []
     
     print(f"SP50: Grid Layout Lambda Trade-off (Synthetic)")
-    print(f"N={N}, D={D}, trials={N_TRIALS}")
+    print(f"N={N}, D={D}, trials={n_trials}")
     print(f"Lambda values: {LAMBDAS}")
     print("-" * 60)
     
@@ -58,11 +58,14 @@ def run_sp50():
         
         lambda_results = []
         
-        for trial in range(N_TRIALS):
+        for trial in range(n_trials):
             seed = BASE_SEED + trial
             
+            # Set random seed for reproducibility
+            np.random.seed(seed)
+            
             # Generate semantic embeddings
-            embeddings = generate_semantic_embeddings(N, D, seed=seed)
+            embeddings = generate_semantic_embeddings(N, D)
             
             # Apply value gate
             trans_coords = apply_value_gate(
@@ -76,7 +79,7 @@ def run_sp50():
             sp_total = compute_sp_total(
                 base_coords=base_coords,
                 trans_coords=trans_coords,
-                layout_type="grid"
+                layout_type=layout_type
             )
             
             ssc = compute_ssc(
