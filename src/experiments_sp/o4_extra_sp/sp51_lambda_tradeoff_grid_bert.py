@@ -1,10 +1,19 @@
 """SP-51: λ Sweep with Grid Layout (BERT Embeddings).
+
 O-4 Value-Gated Coupling: Grid layout variant with BERT embeddings.
+
+Notes
+-----
+Word shuffling is applied to create trial-to-trial variability.
+This models the cognitive variability in "which word goes where"
+when constructing a memory palace, while keeping the same word set.
 """
 from __future__ import annotations
+
 from pathlib import Path
 import numpy as np
 import pandas as pd
+
 from src.core_sp.sp_metrics import compute_sp_total
 from src.core_sp.ssc_wrapper import compute_ssc
 from src.core_sp.value_gate import apply_value_gate
@@ -19,7 +28,19 @@ def run_sp51_lambda_tradeoff_grid_bert(
     lambda_values: tuple = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
     out_dir: Path = Path("outputs_sp/sp51_lambda_tradeoff_grid_bert"),
 ) -> None:
-    """Test SSC-SP tradeoff with grid layout (BERT embeddings)."""
+    """Test SSC-SP tradeoff with grid layout (BERT embeddings).
+    
+    Parameters
+    ----------
+    n_trials : int, default=1000
+        Number of trials per λ value
+    seed : int, default=701
+        Random seed for reproducibility
+    lambda_values : tuple
+        Value gate parameters to test
+    out_dir : Path
+        Output directory
+    """
     
     rng = np.random.default_rng(seed)
     
@@ -54,15 +75,24 @@ def run_sp51_lambda_tradeoff_grid_bert(
     for lam in lambda_values:
         print(f"  Processing λ={lam}...")
         for trial in range(n_trials):
+            # Word shuffling: vary which word goes to which position
+            # This creates trial-to-trial variability while keeping the same word set
+            shuffle_seed = seed + 1000000 + trial
+            shuffle_rng = np.random.default_rng(shuffle_seed)
+            word_order = shuffle_rng.permutation(n_items)
+            
+            # Shuffled semantic embeddings for this trial
+            sem_trial = sem[word_order]
+            
             # Apply value gate
             trial_seed = seed + trial
             coords_value = apply_value_gate(
-                base_coords, sem, lam, seed=trial_seed, radius=1.0
+                base_coords, sem_trial, lam, seed=trial_seed, radius=1.0
             )
             
             # Compute SP and SSC
             sp_val = compute_sp_total(base_coords, coords_value, layout_type=layout_type)
-            ssc_val = compute_ssc(sem, coords_value)
+            ssc_val = compute_ssc(sem_trial, coords_value)
             
             records.append({
                 "lambda": lam,
@@ -106,7 +136,8 @@ def run_sp51_lambda_tradeoff_grid_bert(
             "seed": seed,
             "n_items": n_items,
             "lambda_values": list(lambda_values),
-            "layout_type": layout_type
+            "layout_type": layout_type,
+            "word_shuffling": True
         },
         records=records,
         summary_df=summary_df,
