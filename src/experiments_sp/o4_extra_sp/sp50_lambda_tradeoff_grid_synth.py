@@ -1,20 +1,16 @@
+"""SP-50: λ Sweep with Grid Layout (Synthetic Embeddings).
+O-4 Value-Gated Coupling: Grid layout variant demonstrating SSC-SP tradeoff
+with synthetic embeddings on structured (8×8 grid) initial configuration.
 """
-SP50: Lambda Trade-off with Grid Layout (Synthetic)
-
-Demonstrates SSC↑ and SP↓ trade-off when starting from structured layout.
-Grid layout (8×8, N=64) with synthetic embeddings.
-Lambda sweep: 0.0, 0.2, 0.4, 0.6, 0.8, 1.0
-Trials: 1000 per lambda
-"""
-
+from __future__ import annotations
+from pathlib import Path
 import numpy as np
 import pandas as pd
-from pathlib import Path
-
-from src.core_sp.generators import generate_semantic_embeddings
-from src.core_sp.value_gate import apply_value_gate
 from src.core_sp.sp_metrics import compute_sp_total
 from src.core_sp.ssc_wrapper import compute_ssc
+from src.core_sp.value_gate import apply_value_gate
+from src.core_sp.generators import generate_semantic_embeddings
+from src.experiments_sp.utils.save_results import save_experiment_results, compute_statistics
 
 
 def generate_grid_layout(n_items: int = 64) -> np.ndarray:
@@ -23,111 +19,100 @@ def generate_grid_layout(n_items: int = 64) -> np.ndarray:
     coords = []
     for i in range(grid_size):
         for j in range(grid_size):
-            coords.append([i, j])
+            coords.append([float(j), float(i)])
     return np.array(coords, dtype=np.float64)
 
 
-def run_sp50(n_trials: int = 1000):
-    """Run SP50 experiment."""
+def run_sp50_lambda_tradeoff_grid_synth(
+    n_trials: int = 1000,
+    seed: int = 700,
+    lambda_values: tuple = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
+    out_dir: Path = Path("outputs_sp/sp50_lambda_tradeoff_grid_synth"),
+) -> None:
+    """Test SSC-SP tradeoff with grid layout (synthetic embeddings)."""
+    
+    rng = np.random.default_rng(seed)
     
     # Parameters
-    N = 64
-    D = 128
-    LAMBDAS = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-    BASE_SEED = 5000
+    n_items = 64
+    d_embedding = 128
     
-    # Output directory
-    output_dir = Path("outputs_sp/sp50_lambda_tradeoff_grid_synth")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Generate base grid layout
-    base_coords = generate_grid_layout(N)
-    
+    # Generate grid layout
+    base_coords = generate_grid_layout(n_items)
     layout_type = "grid"
     
-    # Storage
-    all_results = []
+    print(f"  Grid layout: {base_coords.shape}")
+    print(f"  Embedding dimension: {d_embedding}")
     
-    print(f"SP50: Grid Layout Lambda Trade-off (Synthetic)")
-    print(f"N={N}, D={D}, trials={n_trials}")
-    print(f"Lambda values: {LAMBDAS}")
-    print("-" * 60)
+    records = []
     
-    for lam in LAMBDAS:
-        print(f"\nLambda = {lam:.1f}")
-        
-        lambda_results = []
-        
+    for lam in lambda_values:
+        print(f"  Processing λ={lam}...")
         for trial in range(n_trials):
-            seed = BASE_SEED + trial
-            
-            # Create random number generator
-            rng = np.random.default_rng(seed)
-            
-            # Generate semantic embeddings
-            embeddings = generate_semantic_embeddings(N, D, rng)
+            # Generate synthetic embeddings
+            trial_seed = seed + trial
+            trial_rng = np.random.default_rng(trial_seed)
+            sem = generate_semantic_embeddings(n_items, d_embedding, trial_rng)
             
             # Apply value gate
-            trans_coords = apply_value_gate(
-                base_coords=base_coords.copy(),
-                embeddings=embeddings,
-                lam=lam,
-                seed=seed
+            coords_value = apply_value_gate(
+                base_coords, sem, lam, seed=trial_seed, radius=1.0
             )
             
-            # Compute metrics
-            sp_total = compute_sp_total(
-                base_coords=base_coords,
-                trans_coords=trans_coords,
-                layout_type=layout_type
-            )
+            # Compute SP and SSC
+            sp_val = compute_sp_total(base_coords, coords_value, layout_type=layout_type)
+            ssc_val = compute_ssc(sem, coords_value)
             
-            ssc = compute_ssc(
-                embeddings=embeddings,
-                coords=trans_coords
-            )
-            
-            # Store
-            result = {
-                'lambda': lam,
-                'trial': trial,
-                'seed': seed,
-                'sp_total': sp_total,
-                'ssc': ssc
-            }
-            lambda_results.append(result)
-            all_results.append(result)
+            records.append({
+                "lambda": lam,
+                "trial": trial,
+                "sp": sp_val,
+                "ssc": ssc_val
+            })
+    
+    # Compute summary statistics per λ
+    summary_rows = []
+    
+    for lam in lambda_values:
+        lam_records = [r for r in records if r["lambda"] == lam]
         
-        # Summary for this lambda
-        df_lam = pd.DataFrame(lambda_results)
-        mean_sp = df_lam['sp_total'].mean()
-        std_sp = df_lam['sp_total'].std()
-        mean_ssc = df_lam['ssc'].mean()
-        std_ssc = df_lam['ssc'].std()
+        sp_values = [r["sp"] for r in lam_records]
+        ssc_values = [r["ssc"] for r in lam_records]
         
-        print(f"  SP:  {mean_sp:.4f} ± {std_sp:.4f}")
-        print(f"  SSC: {mean_ssc:.4f} ± {std_ssc:.4f}")
+        sp_stats = compute_statistics(sp_values)
+        ssc_stats = compute_statistics(ssc_values)
+        
+        summary_rows.append({
+            "lambda": lam,
+            "n": sp_stats["n"],
+            "sp_mean": sp_stats["mean"],
+            "sp_std": sp_stats["std"],
+            "sp_ci_low": sp_stats["ci_low"],
+            "sp_ci_high": sp_stats["ci_high"],
+            "ssc_mean": ssc_stats["mean"],
+            "ssc_std": ssc_stats["std"],
+            "ssc_ci_low": ssc_stats["ci_low"],
+            "ssc_ci_high": ssc_stats["ci_high"]
+        })
     
-    # Save raw data
-    df_all = pd.DataFrame(all_results)
-    raw_path = output_dir / "sp50_raw.json"
-    df_all.to_json(raw_path, orient='records', indent=2)
-    print(f"\nRaw data saved: {raw_path}")
+    summary_df = pd.DataFrame(summary_rows)
     
-    # Save summary
-    summary = df_all.groupby('lambda').agg({
-        'sp_total': ['mean', 'std'],
-        'ssc': ['mean', 'std']
-    }).reset_index()
-    summary.columns = ['lambda', 'sp_mean', 'sp_std', 'ssc_mean', 'ssc_std']
-    
-    summary_path = output_dir / "sp50_summary.csv"
-    summary.to_csv(summary_path, index=False)
-    print(f"Summary saved: {summary_path}")
-    
-    print("\nSP50 complete!")
-    return summary
+    save_experiment_results(
+        experiment_id="sp50_lambda_tradeoff_grid_synth",
+        version="v2.1.0",
+        parameters={
+            "n_trials": n_trials,
+            "seed": seed,
+            "n_items": n_items,
+            "d_embedding": d_embedding,
+            "lambda_values": list(lambda_values),
+            "layout_type": layout_type
+        },
+        records=records,
+        summary_df=summary_df,
+        out_dir=out_dir
+    )
 
 
 if __name__ == "__main__":
-    run_sp50()
+    run_sp50_lambda_tradeoff_grid_synth()
