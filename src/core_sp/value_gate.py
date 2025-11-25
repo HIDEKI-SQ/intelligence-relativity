@@ -2,14 +2,11 @@
 
 This module provides the value-gated coupling mechanism that increases
 SSC by modulating spatial arrangement based on semantic similarity.
-
-The implementation is adapted from exp_13_value_gate_sweep.py with
-generalized interface for v2 experiments.
 """
 
 import numpy as np
-from scipy.spatial.distance import pdist, squareform
-
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import MinMaxScaler
 
 def apply_value_gate(
     base_coords: np.ndarray,
@@ -17,99 +14,69 @@ def apply_value_gate(
     lam: float,
     seed: int = 42,
     radius: float = 1.0,
-    layout: str = 'circle'
+    layout: str = 'grid'  # Kept for API compatibility; behavior depends on base_coords
 ) -> np.ndarray:
     """
     Apply value gate parameter λ to arrange items spatially.
     
-    λ=0: Pure random arrangement (no value pressure)
-    λ=1: Perfect semantic-spatial alignment (max value pressure)
-    
+    Now supports morphing from a structured base_layout (e.g., grid)
+    to a semantic layout via linear interpolation.
+
+    λ=0: Returns base_coords exactly (Structure preserved).
+    λ=1: Returns PCA-projected semantic coordinates (Meaning dominant).
+    0<λ<1: Linear interpolation between Structure and Meaning.
+
     Parameters
     ----------
-    base_coords : ndarray, shape (n_items, 2) or (n_items, 3)
-        Base coordinates (used for reference, not modified)
+    base_coords : ndarray, shape (n_items, 2)
+        Base coordinates (e.g., 8x8 grid). 
+        MUST be provided and determines the starting structure at λ=0.
     embeddings : ndarray, shape (n_items, dim)
-        Semantic embeddings
+        Semantic embeddings.
     lam : float in [0, 1]
-        Value gate parameter
-    seed : int, default=42
-        Random seed for reproducibility
-    radius : float, default=1.0
-        Layout radius (for circle layout)
-    layout : str, default='circle'
-        Layout type ('circle' supported in v2.0.0)
-    
+        Value gate parameter.
+    seed : int
+        Random seed (used for PCA projection).
+    radius : float
+        (Deprecated in this logic but kept for compatibility).
+    layout : str
+        (Deprecated in this logic but kept for compatibility).
+
     Returns
     -------
-    coords_gated : ndarray, shape (n_items, 2) or (n_items, 3)
-        Spatially arranged coordinates under value gate
-    
-    Notes
-    -----
-    This function implements the value-gated coupling mechanism validated
-    in O-4. The algorithm:
-    1. Computes semantic distance matrix D_sem
-    2. Generates random distance matrix D_rand
-    3. Combines: D = (1-λ)*D_rand + λ*D_sem
-    4. Applies greedy TSP-like ordering to minimize combined distance
-    5. Places ordered items on circle layout
-    
-    References
-    ----------
-    Adapted from exp_13_value_gate_sweep.py (v1.1.2)
-    
-    Examples
-    --------
-    >>> from src.core_sp.generators import generate_semantic_embeddings
-    >>> rng = np.random.default_rng(42)
-    >>> embeddings = generate_semantic_embeddings(20, 100, rng)
-    >>> base_coords = np.random.uniform(-1, 1, (20, 2))
-    >>> coords_gated = apply_value_gate(base_coords, embeddings, lam=0.5, seed=42)
-    >>> coords_gated.shape
-    (20, 2)
+    coords_gated : ndarray, shape (n_items, 2)
+        Spatially arranged coordinates under value gate.
     """
-    rng = np.random.default_rng(seed)
-    n_items = embeddings.shape[0]
+    # 1. If lambda is 0, return base_coords immediately (Pure Structure preserved)
+    # This ensures backward compatibility with experiments expecting the exact base layout.
+    if lam == 0.0:
+        return base_coords.copy()
+
+    # 2. Generate "Semantic Coordinates" (Target for λ=1)
+    # Project high-dimensional embeddings to 2D to define "where items want to go"
+    # based purely on meaning.
+    pca = PCA(n_components=2, random_state=seed)
+    coords_sem_raw = pca.fit_transform(embeddings)
+
+    # 3. Scale Semantic Coordinates to match Base Coordinates
+    # This prevents the structure from "shrinking" or "exploding" during transition.
+    # We align the min/max range of the semantic map to the base layout.
     
-    # Semantic distances
-    D_sem = squareform(pdist(embeddings, metric='correlation'))
+    # Get the range of the base coordinates
+    min_base = np.min(base_coords, axis=0)
+    max_base = np.max(base_coords, axis=0)
     
-    # Random distances
-    D_rand = rng.uniform(0, 1, (n_items, n_items))
-    D_rand = (D_rand + D_rand.T) / 2  # Symmetrize
-    np.fill_diagonal(D_rand, 0)
+    # Scale semantic coordinates to 0-1 first
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    coords_sem_norm = scaler.fit_transform(coords_sem_raw)
     
-    # Combine: D = (1-λ)*D_rand + λ*D_sem
-    D_combined = (1 - lam) * D_rand + lam * D_sem
-    
-    # Greedy TSP-like ordering to minimize combined distance
-    start = rng.integers(0, n_items)
-    ordering = [start]
-    remaining = set(range(n_items)) - {start}
-    current = start
-    
-    while remaining:
-        distances = [(D_combined[current, node], node) for node in remaining]
-        _, nearest = min(distances)
-        ordering.append(nearest)
-        remaining.remove(nearest)
-        current = nearest
-    
-    ordering = np.array(ordering)
-    
-    # Generate layout coordinates
-    if layout == 'circle':
-        angles = 2 * np.pi * np.arange(n_items) / n_items
-        x = radius * np.cos(angles)
-        y = radius * np.sin(angles)
-        coords = np.column_stack([x, y])
-    else:
-        raise NotImplementedError(f"Layout '{layout}' not supported in v2.0.0")
-    
-    # Apply ordering
-    ordered_coords = np.zeros_like(coords)
-    for i, item_idx in enumerate(ordering):
-        ordered_coords[item_idx] = coords[i]
-    
-    return ordered_coords
+    # Then scale to the base coordinate range
+    # Formula: (max - min) * value + min
+    range_base = max_base - min_base
+    coords_sem_scaled = coords_sem_norm * range_base + min_base
+
+    # 4. Apply Linear Interpolation (Mixing)
+    # coords = (1 - λ) * Structure + λ * Meaning
+    coords_gated = (1 - lam) * base_coords + lam * coords_sem_scaled
+
+    return coords_gated
